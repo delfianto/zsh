@@ -1,0 +1,32 @@
+# has_cmd; checks if the given argument exist in PATH.
+# if has_cmd [cmd_name]; then ... fi
+
+has_cmd() {
+  local quiet=0
+  while [[ "$1" == -* ]]; do
+    case "$1" in
+      '-q' | '--quiet')
+        quiet=1
+        shift
+        ;;
+      -*)
+        stderr "Unknown option: $1"
+        return 1
+        ;;
+    esac
+  done
+
+  local cmd="$1"
+
+  if [[ -z "$cmd" ]]; then
+    (( ! quiet )) && stderr "No command provided."
+    return 1
+  fi
+
+  if (( ! ${+commands[$cmd]} )); then
+    (( ! quiet )) && stderr "$cmd is not installed."
+    return 1
+  fi
+
+  return 0
+}

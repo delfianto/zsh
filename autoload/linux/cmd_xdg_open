@@ -1,0 +1,7 @@
+# -*- mode: sh -*-
+
+if has_cmd handlr; then
+  handlr open "$@"
+else
+  xdg-open "$@"
+fi

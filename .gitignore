@@ -1,0 +1,12 @@
+# ignored directories
+.zinit/
+.zsh_sessions/
+myconf/
+
+# lock files
+*.lock
+
+# zsh dynamic files
+*.histfile
+*.zcompdump
+*.zsh_history

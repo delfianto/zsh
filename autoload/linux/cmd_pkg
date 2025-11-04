@@ -1,0 +1,75 @@
+# -*- mode: sh -*-
+
+cmd_pkg() {
+  if ! has_cmd yay; then
+    return 1
+  fi
+
+  case "$1" in
+    'logs')
+      cat /var/log/pacman.log
+      ;;
+    'build')
+      makepkg -sc
+      ;;
+    'check')
+      yay "${@:2}"
+      ;;
+    'clean')
+      echo 'y' | yay -Sc
+      ;;
+    'deps')
+      pactree -d 1 "${@:2}"
+      ;;
+    'file')
+      yay -Qlq "${@:2}"
+      ;;
+    'find')
+      yay -Ss "${@:2}"
+      ;;
+    'info')
+      yay -Qi "${@:2}"
+      ;;
+    'stat')
+      yay -Ps
+      ;;
+    'orphan')
+      yay -Qdtq
+      ;;
+    'nodeps')
+      if [[ ! -z $(pkg orphan) ]]; then
+        tput setaf 1
+        stdout "WARNING: Removing all unneeded dependencies..."
+        tput sgr0
+
+        yay -Yc
+      else
+        stdout "No unneeded dependencies in the system."
+      fi
+      ;;
+    'l' | 'ls' | 'list')
+      yay -Qs ${@:2}
+      ;;
+    'i' | 'in' | 'install')
+      yay -Sy "${@:2}"
+      ;;
+    'r' | 'rm' | 'remove')
+      yay -R ${@:2}
+      ;;
+    'u' | 'up' | 'upgrade')
+      yay -Syu
+      ;;
+    'yu' | 'yup')
+      yes | yay -Syu
+      ;;
+    's' | 'sy' | 'update' )
+      yay -Syy
+      ;;
+    'q' | 'qu' | 'quiet')
+      yay --editmenu --nocleanmenu --nodiffmenu --noeditmenu --noremovemake --save
+      ;;
+    *)
+      yay ${@:1}
+      ;;
+  esac
+}

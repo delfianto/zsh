@@ -1,0 +1,11 @@
+build=--pull
+config=
+down=
+exec=
+inspect=
+logs=-f
+ls=
+ps=--format table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}
+pull=
+restart=
+up=--force-recreate -d

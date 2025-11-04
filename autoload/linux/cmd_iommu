@@ -1,0 +1,104 @@
+#!/bin/zsh
+
+# Path to the cleanup rules configuration file
+IOMMU_RULES_FILE="${HOME}/.config/iommu_cleanup_rules"
+
+# Check if the rules file exists, if not, create a default one
+if [[ ! -f "$IOMMU_RULES_FILE" ]]; then
+  stdout "Cleanup rules file not found. Creating a default at $IOMMU_RULES_FILE"
+  cat > "$IOMMU_RULES_FILE" << EOF
+# This file contains cleanup rules for the IOMMU script.
+# Each line should be in the format: 'original_string'='replacement_string'
+# The replacements are processed in the order they appear.
+
+# Vendor name cleanup
+'Advanced Micro Devices, Inc. [AMD]'='AMD'
+'NVIDIA Corporation'='NVIDIA'
+'Shenzhen Longsys Electronics Co., Ltd.'=''
+'Realtek Semiconductor Co., Ltd.'='Realtek'
+'ASMedia Technology Inc.'='ASMedia'
+'Phison Electronics Corporation'='Phison'
+'Qualcomm Technologies, Inc'='Qualcomm'
+
+# Specific device name cleanup
+'Raphael/Granite Ridge'='Zen 5'
+'Family 19h'='Zen 5'
+'600 Series Chipset'='X870E'
+'800 Series Chipset'='X870E'
+'Technology Inc.'=''
+'Corporation'=''
+
+# Generic cleanup rules (order matters!)
+' \(rev [0-9a-f]{2}\)'=''
+EOF
+fi
+
+cmd_iommu() {
+  _cleanup_vendor_name() {
+    local input_string="$1"
+    local cleaned_string="$input_string"
+
+    while read -r line; do
+      if [[ "$line" =~ ^# || -z "$line" ]]; then
+        continue
+      fi
+
+      local original_pattern=$(stdout "$line" | cut -d'=' -f1 | sed "s/^'//;s/'$//")
+      local replacement_text=$(stdout "$line" | cut -d'=' -f2 | sed "s/^'//;s/'$//")
+
+      cleaned_string="${cleaned_string//$original_pattern/$replacement_text}"
+    done < "$IOMMU_RULES_FILE"
+
+    # Trim and collapse spaces
+    cleaned_string=$(stdout "$cleaned_string" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[[:space:]]\{2,\}/ /g')
+
+    stdout "$cleaned_string"
+  }
+
+  case "$1" in
+    'p' | 'pci')
+      sudo lspci -vv -s "$2"
+      ;;
+    'g' | 'group')
+      # Get all lspci output at once for efficiency and reliability
+      local all_pci_devices=$(lspci -n)
+
+      for group in /sys/kernel/iommu_groups/*; do
+        printf "IOMMU Group %s:\n" "$(basename "$group")"
+        for device in "${group}"/devices/*; do
+          local pci_id=$(basename "$device")
+
+          # Find the full description for the current pci_id from the pre-fetched list
+          local out=$(stdout "$all_pci_devices" | grep "^${pci_id} ")
+
+          printf " - %s " "$pci_id"
+
+          if [[ -z "$out" ]]; then
+            printf "No device info found\n"
+            continue
+          fi
+
+          # Extract the descriptive part after the PCI ID and cleanup
+          local cleaned_out=$(_cleanup_vendor_name "${out#*: }")
+          printf "%s\n" "$cleaned_out"
+        done
+        stdout
+      done
+      ;;
+    'u' | 'usb')
+      for usb_ctrl in /sys/bus/usb/devices/usb*; do
+        local pci_path="$(dirname "$(realpath "${usb_ctrl}")")"
+        local group_id="$(basename "$(realpath "$pci_path/iommu_group")")"
+        stdout "Bus $(cat "$usb_ctrl/busnum") --> $(basename "$pci_path") (IOMMU group ${group_id})"
+        lsusb -s "$(cat "$usb_ctrl/busnum"):"
+        stdout
+      done
+      ;;
+    *)
+      printf "Usage: %s [pci|group|usb] <pci_id>\n" "${FUNCNAME[0]}"
+      printf "  pci|p: Show verbose lspci output for a given device.\n"
+      printf "  group|g: List all IOMMU groups and their devices.\n"
+      printf "  usb|u: List USB controllers and their IOMMU groups.\n"
+      ;;
+  esac
+}

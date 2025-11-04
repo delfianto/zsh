@@ -1,0 +1,21 @@
+cmd_fpath() {
+  if has_cmd -q realpath; then
+    realpath -m "$@"
+    return $?
+  fi
+
+  local code=$(cat <<'EOF'
+import os
+import sys
+
+for arg in sys.argv[1:]:
+  try:
+    print(os.path.realpath(arg))
+  except Ostderror as e:
+    print(f"realpath: {arg}: {e}", file=sys.stderr)
+    exit(1)
+EOF
+)
+
+  python3 -c "$code" "$@"
+}

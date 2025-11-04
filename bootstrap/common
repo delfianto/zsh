@@ -1,0 +1,100 @@
+# -*- mode: sh -*-
+# Shell initialization script for all platforms
+
+local func_name kebab_name
+local shadowed_cmds=()
+local shadow_cmd="${ZSH_SHADOW_CMD:-${MYCONF}/shadow_cmd}"
+
+# Check for the command shadow rule
+if [[ -r "${shadow_cmd}" ]]; then
+  local shadow_rules="$(< "${shadow_cmd}")"
+  shadowed_cmds+=( ${(f)shadow_rules} )
+fi
+
+# Iterate over all defined functions (keys of the 'functions' special associative array)
+for func_name in ${(k)functions}; do
+  # Check if the function name contains an underscore (likely snake_case)
+  if [[ "${func_name}" == cmd_* ]]; then
+    # Convert cmd_snake_case to kebab-case using parameter expansion
+    kebab_name="${func_name//_/-}" && kebab_name="${kebab_name#cmd-}"
+
+    # Allow shadowing if kebab_name is listed in the shadow_cmd file
+    if (( ${shadowed_cmds[(I)${kebab_name}]} )); then
+      (( ZSH_DEBUG_INIT )) && stdout "Shadowing command: ${kebab_name}"
+      (( ZSH_DEBUG_INIT )) && stdout "Aliased: ${kebab_name} -> ${func_name}"
+      alias "${kebab_name}"="${func_name}"
+      continue
+    fi
+
+    # Ensure the kebab-case name is different from the original
+    # and that no command (alias, function, builtin, external)
+    # already exists with the kebab-case name.
+    if [[ -n "${kebab_name}" ]] &&
+       [[ "${kebab_name}" != "${func_name}" ]] &&
+       ! has_cmd -q "${kebab_name}"; then
+      (( ZSH_DEBUG_INIT )) && stdout "Aliased: ${kebab_name} -> ${func_name}"
+      alias "${kebab_name}"="${func_name}"
+    fi
+  fi
+done
+
+unset func_name kebab_name \
+  shadow_cmd shadow_rules \
+  shadowed_cmds
+
+# Kitty workaround for remote host without terminfo
+# https://wiki.archlinux.org/title/Kitty#Terminal_issues_with_SSH
+[[ "$TERM" = "xterm-kitty" ]] && alias ssh="kitty +kitten ssh"
+
+# Command replacements
+if has_cmd -q bat; then
+  alias cat="bat --color=always --paging=never --style=plain"
+  alias nut="bat --color=always --paging=never"
+fi
+
+if has_cmd -q duf; then
+  alias df="duf"
+else
+  alias df="df -h"
+fi
+
+if has_cmd -q gdu; then
+  alias du="gdu"
+else
+  alias du="du -h"
+  alias ds="du -hs"
+fi
+
+if has_cmd -q eza; then
+  alias ls="eza ${LS_ARGS}"
+  alias ll="eza ${LS_ARGS} -l"
+  alias la="eza ${LS_ARGS} -a"
+  alias lla="eza ${LS_ARGS} -al"
+else
+  alias ls="ls ${LS_ARGS}"
+  alias ll="ls ${LS_ARGS} -l"
+  alias la="ls ${LS_ARGS} -a"
+  alias lla="ls ${LS_ARGS} -al"
+fi
+
+if has_cmd -q nvim; then
+  alias vi="nvim"
+  alias vim="nvim"
+fi
+
+# Rest of command alias
+alias cls="clear && printf '\e[3J'"
+alias cp="cp -v"
+alias mv="mv -v"
+alias sudo="sudo "
+alias which="command -v"
+
+# Colorful grep output
+alias grep="grep -i --color=auto"
+alias egrep="egrep -i --color=auto"
+alias fgrep="fgrep -i --color=auto"
+
+# Shell management
+alias history="fc -li"
+alias shdir="cd ${ZDOTDIR}"
+alias reload="exec ${SHELL} -l"

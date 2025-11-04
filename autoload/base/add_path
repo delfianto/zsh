@@ -1,0 +1,13 @@
+# add_path; validate and add a directory to the PATH variable.
+# add_path [dir_name] [before|after]
+
+add_path() {
+  if [[ -d "$1" ]] && [[ -r "$1" ]] &&
+    ! echo "$PATH" | grep -Eq "(^|:)$1($|:)"; then
+    if [[ "$2" = "after" ]]; then
+      PATH="$PATH:$1"
+    else
+      PATH="$1:$PATH"
+    fi
+  fi
+}

@@ -1,0 +1,158 @@
+# cmd_compose; zsh wrapper for `docker compose` commands, automates file discovery,
+# and applies common default flags.
+
+cmd_compose() {
+  # --- Initialization ---
+
+  # Help config file paths relative to the script's location.
+  local config_file="$ZFUNCDIR/_files/$0.args"
+  local help_file="$ZFUNCDIR/_files/$0.help"
+
+  # Associative array for each argument default flags.
+  typeset -A default_args
+
+  # Read the configuration file and populate the array.
+  if [[ -f "$config_file" ]]; then
+    while IFS='=' read -r command flags; do
+      # Remove leading and trailing whitespace.
+      command="${command##[[:space:]]#}"
+      command="${command%%[[:space:]]#}"
+      flags="${flags##[[:space:]]#}"
+      flags="${flags%%[[:space:]]#}"
+
+      # Only add the entry if the resulting string is not empty.
+      if [[ -n "$command" ]]; then
+        default_args[$command]="$flags"
+      fi
+    done < "$config_file"
+  else
+    stderr "Error: Configuration file not found at '$config_file'"
+    return 1
+  fi
+
+  # --- Sanity Checks ---
+
+  # Check if at least one argument is provided.
+  if (( $# < 1 )); then
+    cat_help "$help_file"
+    return 1
+  fi
+
+  # Store the first argument and shift the remaining
+  local arg="$1"; shift
+
+  # Check if the provided argument is defined in our configuration.
+  # The `-v` flag checks if the variable exists in the associative array.
+  #
+  # The argument to -v should be the name of the variable, not its expanded value
+  # so we use `default_args[$arg]` instead of `$default_args[$arg]`.
+  local arg_params="$default_args[$arg]"
+  if [[ ! -v "default_args[$arg]" ]]; then
+    stderr "Error: Invalid command '$arg'."
+    usage
+    return 1
+  fi
+
+  # --- Check for Compose Files ---
+
+  # Find docker compose file in the project directory, this pattern will try
+  # to match both `compose.y(a)ml` and `docker-compose.y(a)ml` files.
+  #
+  # Use zsh's glob qualifiers `(N)` to enable nullglob, meaning the glob
+  # expands to nothing if no files are found.
+  #
+  # If there are multiple files matching the pattern, the script will
+  # bail out and stop the execution as it does not know which file
+  # is the correct one.
+  local compose_files=((docker-|)compose.y(a|)ml(N))
+  local env_files=(.env*(N))
+
+  if (( "${#compose_files}" == 0 )); then
+    stderr "Error: No compose file found inside project directory"
+    return 1
+  elif (( "${#compose_files}" > 1 )); then
+    stderr "Error: Multiple compose files found: ${compose_files[*]}"
+    stderr "Please remove or rename conflicting files"
+    return 1
+  fi
+
+  # --- Build the Command ---
+
+  # Initialize the command array with the base `docker compose` arguments.
+  local cmd=("docker" "compose")
+
+  # Append any found environment files to the command.
+  for file in "${env_files[@]}"; do
+    cmd+=("--env-file" "$file")
+  done
+
+  # For build command always use the --progress plain flag to show output logs.
+  # This is useful for CI environments and also when running the command
+  # in a terminal that does not support fancy progress bars.
+  #
+  # Controlled by the PRG environment variable.
+  if [[ "$arg" == "build" ]] && [[ ! -z "$PRG" ]]; then
+    cmd+=("--progress=$PRG")
+  fi
+
+  # Append the user-supplied command (e.g., 'up', 'ps').
+  cmd+=("$arg")
+
+  # For 'up' and 'down' commands, we want to automatically add
+  # --remove-orphans flag but only if the user hasn't specified it already.
+  if [[ ("$arg" == "up" || "$arg" == "down") ]]; then
+    # Check if the flag is already present in the remaining arguments.
+    local found=false
+    for user_arg in "$@"; do
+      if [[ "$user_arg" == "--remove-orphans" ]]; then
+        found=true
+        break
+      fi
+    done
+
+    # If not found, add it to the command.
+    if ! $found; then
+      cmd+=("--remove-orphans")
+    fi
+  fi
+
+  # Process the command line args from config (if any),
+  # and append them to the command array. If the command is 'ps',
+  # handle the format flag separately.
+  local config_arg="${default_args[$arg]}"
+  if [[ "$arg" == "ps" ]]; then
+    local ps_format_flag="--format"
+
+    # Prefer the environment variable if it's set.
+    if [[ -n "$DOCKER_PS_FORMAT" ]]; then
+      cmd+=("$ps_format_flag" "$DOCKER_PS_FORMAT")
+    else
+      # Fallback to the configured default, stripping the leading flag.
+      # We must do this otherwise the flag and argument will be treated
+      # as single string, and the docker command will fail with an error.
+      local ps_format="${default_args[$arg]#$ps_format_flag }"
+      cmd+=("$ps_format_flag" "$ps_format")
+    fi
+  elif [[ -n "${default_args[$arg]}" ]]; then
+    # Append default flags for the command if they exist in the config.
+    # The `(s/ /)` parameter expansion splits the string on spaces into
+    # an array, which is then appended as individual arguments.
+    cmd+=(${(s/ /)default_args[$arg]})
+  fi
+
+  # Append any additional command-line arguments ($@) passed by the user.
+  if (( $# > 0 )); then
+    cmd+=("$@")
+  fi
+
+  # --- Execution ---
+
+  # Print the final command to standard output for debugging and user confirmation.
+  # typeset -p cmd # more debug command to peek inside the array.
+  stdout "${(j: :)cmd}"
+  stdout ""
+
+  # Execute the final command. The quotes are crucial here to ensure each
+  # element of the array is treated as a single argument, preventing word splitting.
+  "${cmd[@]}"
+}

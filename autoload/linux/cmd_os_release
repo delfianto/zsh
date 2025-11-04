@@ -1,0 +1,40 @@
+# -*- mode: sh -*-
+
+cmd_os_release() {
+  typeset -A os_info
+
+  # Parse /etc/os-release and store in an associative array
+  while IFS='=' read -r key value; do
+    value="${value//\"/""}"
+    os_info[${key:l}]="${value}"
+  done < /etc/os-release
+
+  local format="${1:---shell}"
+
+  case "${format}" in
+    '-s' | '--shell')
+      # Output in shell-friendly format
+      for key in ${(k)os_info}; do
+        stdout "${key}: ${os_info[$key]}"
+      done
+      ;;
+    '-j' | '--json')
+      # Output in JSON format
+      local json="{"
+      for key in ${(k)os_info}; do
+        json+="\"${key}\": \"${os_info[$key]}\","
+      done
+      json="${json%,}}"
+
+      if has_cmd -q jq; then
+        stdout "${json}" | jq .
+      else
+        stdout "${json}"
+      fi
+      ;;
+    *)
+      stderr "Invalid output format '${format}'. Use 'json' or 'shell'."
+      return 1
+      ;;
+  esac
+}

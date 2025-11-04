@@ -1,0 +1,40 @@
+# -*- mode: sh -*-
+
+cmd_pkg() {
+  if ! has_cmd brew; then
+    return 1
+  fi
+
+  case "$1" in
+    'info')
+      brew info "${@:2}"
+      ;;
+    'search')
+      brew search "${@:2}"
+      ;;
+    'l' | 'ls' | 'list')
+      brew list "${@:2}"
+      ;;
+    'i' | 'in' | 'install')
+      brew install "${@:2}"
+      ;;
+    'r' | 'rm' | 'remove')
+      brew uninstall "${@:2}"
+      ;;
+    'u' | 'up' | 'upgrade')
+      brew upgrade "${@:2}"
+      ;;
+    's' | 'sy' | 'update')
+      brew update
+      ;;
+    'c' | 'cfg' | 'config')
+      brew config
+      ;;
+    'd' | 'doc' | 'doctor')
+      brew doctor
+      ;;
+    *)
+      brew "${@:1}"
+      ;;
+  esac
+}

@@ -1,0 +1,28 @@
+cmd_docker_image() {
+  if ! has_cmd docker; then
+    stderr "Error: Docker is not installed."
+    return 1
+  fi
+
+  case "$1" in
+    'up')
+      docker images --format '{{.Repository}}:{{.Tag}}' | grep -v '<none>' | while IFS= read -r image; do
+        stdout "--- Pulling update for $image ---"
+        docker pull "$image"
+        stdout ""
+      done
+      ;;
+    'clean')
+      docker system prune -a -f
+      ;;
+    'build' | 'inspect' | 'ls' | 'pull' | 'push' | 'rm' | 'prune' | 'tag')
+      docker image $1 ${@:2}
+      ;;
+    *)
+      stderr "Error: Unknown command argument '$1'."
+      stderr ""
+      docker images --help
+      return 1
+      ;;
+  esac
+}

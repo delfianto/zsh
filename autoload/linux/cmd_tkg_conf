@@ -1,0 +1,51 @@
+# -*- mode: sh -*-
+
+cmd_tkg_conf() {
+  case "$1" in
+    '-h' | '--help')
+      stdout "Usage: ${funcstack[1]} [OPTION]"
+      stdout "Options:"
+      stdout "  -h, --help    Show this help message and exit"
+      stdout "  -s, --link    Create a symlink to the frogminer config file"
+      ;;
+    '-e' | '--edit')
+      local cwd="$(pwd)"
+      local user_cfg="$cwd/user-settings.cfg"
+      local real_cfg="$XDG_CONFIG_HOME/dotfiles/frogminer/$(basename $cwd).cfg"
+
+      if is_link "$user_cfg"; then
+        "$VISUAL" "$user_cfg"
+      elif is_file "$real_cfg"; then
+        "$VISUAL" "$real_cfg"
+      fi
+      ;;
+    '-s' | '--link')
+      local real_dir="$XDG_CONFIG_HOME/dotfiles/frogminer"
+      local conf_dir="$XDG_CONFIG_HOME/frogminer"
+
+      local cwd="$(pwd)"
+      local real_cfg="$real_dir/$(basename $cwd).cfg"
+      local user_cfg="$cwd/user-settings.cfg"
+
+      if [[ -f "$real_cfg" && -r "$real_cfg" && ! -L "$real_cfg" ]]; then
+        if [[ -d "$conf_dir" && -r "$conf_dir" && ! -L "$conf_dir" ]]; then
+          stderr "Error: '$conf_dir' already exists. Please remove it first."
+          return 1
+        elif [[ ! -L "$conf_dir" ]] "$conf_dir"; then
+          stdout "Creating symlink: $real_dir -> $conf_dir"
+          ln -s "$real_dir" "$conf_dir"
+        fi
+
+        stdout "Creating symlink: $real_cfg -> $user_cfg"
+        ln -sf "$real_cfg" "$user_cfg"
+
+        return 0
+      fi
+      ;;
+    *)
+      stderr "Error: Invalid argument '$1'"
+      ${funcstack[1]} --help
+      return 1
+      ;;
+  esac
+}
