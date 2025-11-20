@@ -1,0 +1,103 @@
+cmd_venv() {
+    local action=""
+    local venv_name=".venv"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --start | -s)
+                action="start"
+                shift
+                if [[ -n "$1" ]] && [[ ! "$1" =~ ^- ]]; then
+                    venv_name="$1"
+                    shift
+                fi
+                ;;
+            --init | -i)
+                action="init"
+                shift
+                if [[ -n "$1" ]] && [[ ! "$1" =~ ^- ]]; then
+                    venv_name="$1"
+                    shift
+                fi
+                ;;
+            --check | -c)
+                action="check"
+                shift
+                ;;
+            --help | -h)
+                action="help"
+                shift
+                ;;
+            *)
+                echo "Error: Unknown option '$1'"
+                echo "Use --help or -h for usage information"
+                return 1
+                ;;
+        esac
+    done
+
+    # Execute action
+    case $action in
+        start)
+            if [[ -f "$venv_name/bin/activate" ]]; then
+                source "$venv_name/bin/activate"
+                echo "✓ Activated virtual environment: $venv_name"
+            else
+                echo "✗ Virtual environment not found: $venv_name/bin/activate"
+                echo "Tip: Use 'vmd_venv --init $venv_name' to create it"
+                return 1
+            fi
+            ;;
+        init)
+            if [[ -d "$venv_name" ]]; then
+                echo "✗ Virtual environment already exists: $venv_name"
+                return 1
+            fi
+            echo "Creating virtual environment: $venv_name"
+            python3 -m venv "$venv_name"
+            if [[ $? -eq 0 ]]; then
+                echo "✓ Virtual environment created: $venv_name"
+                echo "Tip: Use 'vmd_venv --start $venv_name' to activate it"
+            else
+                echo "✗ Failed to create virtual environment"
+                return 1
+            fi
+            ;;
+        check)
+            if [[ -n "$VIRTUAL_ENV" ]]; then
+                echo "✓ Virtual environment is active"
+                echo "  Path: $VIRTUAL_ENV"
+                echo "  Python: $(which python)"
+                echo "  Version: $(python --version)"
+            else
+                echo "✗ No virtual environment is currently active"
+            fi
+            ;;
+        help)
+            cat << 'EOF'
+vmd_venv - Virtual Environment Management
+
+Usage:
+  vmd_venv [option] [name]
+
+Options:
+  --start, -s [name]    Activate virtual environment (default: .venv)
+  --init, -i [name]     Create new virtual environment (default: .venv)
+  --check, -c           Show currently active venv info
+  --help, -h            Show this help message
+
+Examples:
+  venv -s           # Activate .venv
+  venv -s foobar    # Activate foobar venv
+  venv -i myenv     # Create myenv venv
+  venv -c           # Check active venv
+EOF
+            ;;
+        *)
+            echo "Error: No action specified"
+            echo "Use --help or -h for usage information"
+            return 1
+            ;;
+    esac
+}
