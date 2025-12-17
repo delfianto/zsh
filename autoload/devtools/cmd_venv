@@ -1,6 +1,7 @@
 cmd_venv() {
     local action=""
     local venv_name=".venv"
+    local app_path=""
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -25,6 +26,18 @@ cmd_venv() {
                 action="check"
                 shift
                 ;;
+            --run | -r)
+                action="run"
+                shift
+                if [[ -n "$1" ]] && [[ ! "$1" =~ ^- ]]; then
+                    app_path="$1"
+                    shift
+                fi
+                ;;
+            --test | -t)
+                action="test"
+                shift
+                ;;
             --help | -h)
                 action="help"
                 shift
@@ -45,7 +58,7 @@ cmd_venv() {
                 echo "✓ Activated virtual environment: $venv_name"
             else
                 echo "✗ Virtual environment not found: $venv_name/bin/activate"
-                echo "Tip: Use 'vmd_venv --init $venv_name' to create it"
+                echo "Tip: Use 'cmd_venv --init $venv_name' to create it"
                 return 1
             fi
             ;;
@@ -58,7 +71,7 @@ cmd_venv() {
             python3 -m venv "$venv_name"
             if [[ $? -eq 0 ]]; then
                 echo "✓ Virtual environment created: $venv_name"
-                echo "Tip: Use 'vmd_venv --start $venv_name' to activate it"
+                echo "Tip: Use 'cmd_venv --start $venv_name' to activate it"
             else
                 echo "✗ Failed to create virtual environment"
                 return 1
@@ -74,24 +87,70 @@ cmd_venv() {
                 echo "✗ No virtual environment is currently active"
             fi
             ;;
+        run)
+            if [[ -z "$VIRTUAL_ENV" ]]; then
+                echo "✗ No virtual environment is active"
+                echo "Tip: Use 'cmd_venv --start' to activate one first"
+                return 1
+            fi
+
+            # Default to main:app if not specified
+            if [[ -z "$app_path" ]]; then
+                app_path="main:app"
+            fi
+
+            if ! command -v uvicorn &> /dev/null; then
+                echo "✗ uvicorn not found"
+                echo "Tip: Install with 'pip install uvicorn'"
+                return 1
+            fi
+
+            echo "Starting uvicorn server: $app_path"
+            uvicorn "$app_path" --host 0.0.0.0 --port 8000 --reload
+            ;;
+        test)
+            if [[ -z "$VIRTUAL_ENV" ]]; then
+                echo "✗ No virtual environment is active"
+                echo "Tip: Use 'cmd_venv --start' to activate one first"
+                return 1
+            fi
+
+            if ! command -v pytest &> /dev/null; then
+                echo "✗ pytest not found"
+                echo "Tip: Install with 'pip install pytest'"
+                return 1
+            fi
+
+            echo "Running all tests..."
+            if [[ -d "tests" ]]; then
+                python -m pytest tests/ -v
+            else
+                python -m pytest -v
+            fi
+            ;;
         help)
             cat << 'EOF'
-vmd_venv - Virtual Environment Management
+cmd_venv - Virtual Environment Management
 
 Usage:
-  vmd_venv [option] [name]
+  cmd_venv [option] [arguments]
 
 Options:
   --start, -s [name]    Activate virtual environment (default: .venv)
   --init, -i [name]     Create new virtual environment (default: .venv)
   --check, -c           Show currently active venv info
+  --run, -r [app:path]  Run uvicorn server (default: main:app)
+  --test, -t            Run all tests with pytest (requires active venv)
   --help, -h            Show this help message
 
 Examples:
-  venv -s           # Activate .venv
-  venv -s foobar    # Activate foobar venv
-  venv -i myenv     # Create myenv venv
-  venv -c           # Check active venv
+  cmd_venv -s              # Activate .venv
+  cmd_venv -s foobar       # Activate foobar venv
+  cmd_venv -i myenv        # Create myenv venv
+  cmd_venv -c              # Check active venv
+  cmd_venv -r              # Run uvicorn with main:app
+  cmd_venv -r api:app      # Run uvicorn with custom path
+  cmd_venv -t              # Run all tests
 EOF
             ;;
         *)
