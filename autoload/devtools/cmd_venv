@@ -130,10 +130,10 @@ cmd_venv() {
             ;;
         help)
             cat << 'EOF'
-cmd_venv - Virtual Environment Management
+venv - Virtual Environment Management
 
 Usage:
-  cmd_venv [option] [arguments]
+  venv [option] [arguments]
 
 Options:
   --start, -s [name]    Activate virtual environment (default: .venv)
@@ -144,13 +144,13 @@ Options:
   --help, -h            Show this help message
 
 Examples:
-  cmd_venv -s              # Activate .venv
-  cmd_venv -s foobar       # Activate foobar venv
-  cmd_venv -i myenv        # Create myenv venv
-  cmd_venv -c              # Check active venv
-  cmd_venv -r              # Run uvicorn with main:app
-  cmd_venv -r api:app      # Run uvicorn with custom path
-  cmd_venv -t              # Run all tests
+  venv -s              # Activate .venv
+  venv -s foobar       # Activate foobar venv
+  venv -i myenv        # Create myenv venv
+  venv -c              # Check active venv
+  venv -r              # Run uvicorn with main:app
+  venv -r api:app      # Run uvicorn with custom path
+  venv -t              # Run all tests
 EOF
             ;;
         *)
