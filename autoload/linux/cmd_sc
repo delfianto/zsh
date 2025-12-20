@@ -1,6 +1,0 @@
-# -*- mode: sh -*-
-# sc ~ zsh autoloader wrapper for systemctl.rb utility
-
-cmd_sc() {
-  exec_ruby systemctl.rb "$@"
-}
