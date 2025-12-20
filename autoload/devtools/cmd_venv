@@ -1,73 +1,66 @@
 cmd_venv() {
-    local action=""
-    local venv_name=".venv"
+    # First argument is the command
+    if [[ $# -eq 0 ]]; then
+        echo "Error: No command specified"
+        echo "Use 'venv help' for usage information"
+        return 1
+    fi
+
     local app_path=""
     local install_dev=false
+    local venv_name=".venv"
 
-    # Parse arguments
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            --start | -s)
-                action="start"
-                shift
-                if [[ -n "$1" ]] && [[ ! "$1" =~ ^- ]]; then
-                    venv_name="$1"
-                    shift
-                fi
-                ;;
-            --init | -i)
-                action="init"
-                shift
-                if [[ -n "$1" ]] && [[ ! "$1" =~ ^- ]]; then
-                    venv_name="$1"
-                    shift
-                fi
-                ;;
-            --install | --deps | -d)
-                action="install"
-                shift
-                ;;
-            --dev)
-                install_dev=true
-                shift
-                ;;
-            --check | -c)
-                action="check"
-                shift
-                ;;
-            --run | -r)
-                action="run"
-                shift
-                if [[ -n "$1" ]] && [[ ! "$1" =~ ^- ]]; then
+    local command="$1"
+    shift
+
+    # Parse remaining arguments based on command
+    case $command in
+      deps)
+          # Parse --dev flag
+          while [[ $# -gt 0 ]]; do
+              case $1 in
+                  --dev)
+                      install_dev=true
+                      shift
+                      ;;
+                  *)
+                      echo "Error: Unknown flag '$1' for 'deps' command"
+                      echo "Valid flags: --dev"
+                      return 1
+                      ;;
+              esac
+          done
+          ;;
+        load | init | run)
+            # Optional argument (venv name or app path)
+            if [[ -n "$1" ]] && [[ ! "$1" =~ ^-- ]]; then
+                if [[ "$command" == "run" ]]; then
                     app_path="$1"
-                    shift
+                else
+                    venv_name="$1"
                 fi
-                ;;
-            --test | -t)
-                action="test"
                 shift
-                ;;
-            --help | -h)
-                action="help"
-                shift
-                ;;
-            *)
-                echo "Error: Unknown option '$1'"
-                echo "Use --help or -h for usage information"
-                return 1
-                ;;
-        esac
-    done
+            fi
+            ;;
+        check | test | help)
+            # No additional arguments needed
+            ;;
+        *)
+            echo "Error: Unknown command '$command'"
+            echo "Use 'venv help' for usage information"
+            return 1
+            ;;
+    esac
 
-    # Execute action
-    case $action in
-        start)
+    # Execute command
+    case $command in
+        load)
             if [[ -f "$venv_name/bin/activate" ]]; then
                 source "$venv_name/bin/activate"
                 echo "✓ Activated virtual environment: $venv_name"
             else
                 echo "✗ Virtual environment not found: $venv_name/bin/activate"
-                echo "Tip: Use 'venv --init $venv_name' to create it"
+                echo "Tip: Use 'venv init $venv_name' to create it"
                 return 1
             fi
             ;;
@@ -80,16 +73,16 @@ cmd_venv() {
             python3 -m venv "$venv_name"
             if [[ $? -eq 0 ]]; then
                 echo "✓ Virtual environment created: $venv_name"
-                echo "Tip: Use 'venv --start $venv_name' to activate it"
+                echo "Tip: Use 'venv load $venv_name' to activate it"
             else
                 echo "✗ Failed to create virtual environment"
                 return 1
             fi
             ;;
-        install)
+        deps)
             if [[ -z "$VIRTUAL_ENV" ]]; then
                 echo "✗ No virtual environment is active"
-                echo "Tip: Use 'venv --start' to activate one first"
+                echo "Tip: Use 'venv load' to activate one first"
                 return 1
             fi
 
@@ -98,25 +91,26 @@ cmd_venv() {
                 return 1
             fi
 
-            # Check for uv, fallback to pip
-            local installer=""
+            # Build installer command as array
+            local installer_cmd=()
             if command -v uv &> /dev/null; then
-                installer="uv pip"
+                installer_cmd=(uv pip)
                 echo "Using uv (fast installer)"
             elif command -v pip &> /dev/null; then
-                installer="pip"
+                installer_cmd=(pip)
                 echo "Using pip (uv not found - install with 'pip install uv' for faster installs)"
             else
                 echo "✗ Neither uv nor pip found"
                 return 1
             fi
 
+            # Build full install command
             if [[ "$install_dev" == true ]]; then
                 echo "Installing project with dev dependencies..."
-                $installer install -e ".[dev]"
+                "${installer_cmd[@]}" install -e ".[dev]"
             else
                 echo "Installing project dependencies..."
-                $installer install -e .
+                "${installer_cmd[@]}" install -e .
             fi
 
             if [[ $? -eq 0 ]]; then
@@ -125,7 +119,7 @@ cmd_venv() {
                     echo "  Installed: production + dev dependencies"
                 else
                     echo "  Installed: production dependencies only"
-                    echo "  Tip: Use 'venv --install --dev' to include dev dependencies"
+                    echo "  Tip: Use 'venv deps --dev' to include dev dependencies"
                 fi
             else
                 echo "✗ Failed to install dependencies"
@@ -145,7 +139,7 @@ cmd_venv() {
         run)
             if [[ -z "$VIRTUAL_ENV" ]]; then
                 echo "✗ No virtual environment is active"
-                echo "Tip: Use 'venv --start' to activate one first"
+                echo "Tip: Use 'venv load' to activate one first"
                 return 1
             fi
 
@@ -156,7 +150,7 @@ cmd_venv() {
 
             if ! command -v uvicorn &> /dev/null; then
                 echo "✗ uvicorn not found"
-                echo "Tip: Install with 'venv --install --dev'"
+                echo "Tip: Install with 'venv deps --dev'"
                 return 1
             fi
 
@@ -166,13 +160,13 @@ cmd_venv() {
         test)
             if [[ -z "$VIRTUAL_ENV" ]]; then
                 echo "✗ No virtual environment is active"
-                echo "Tip: Use 'venv --start' to activate one first"
+                echo "Tip: Use 'venv load' to activate one first"
                 return 1
             fi
 
             if ! command -v pytest &> /dev/null; then
                 echo "✗ pytest not found"
-                echo "Tip: Install with 'venv --install --dev'"
+                echo "Tip: Install with 'venv deps --dev'"
                 return 1
             fi
 
@@ -188,40 +182,38 @@ cmd_venv() {
 venv - Virtual Environment Management
 
 Usage:
-  venv [option] [arguments]
+  venv <command> [arguments] [flags]
 
-Options:
-  --start, -s [name]       Activate virtual environment (default: .venv)
-  --init, -i [name]        Create new virtual environment (default: .venv)
-  --install, --deps, -d    Install dependencies from pyproject.toml
-    --dev                  Include dev dependencies (use with --install)
-  --check, -c              Show currently active venv info
-  --run, -r [app:path]     Run uvicorn server (default: main:app)
-  --test, -t               Run all tests with pytest (requires active venv)
-  --help, -h               Show this help message
+Commands:
+  load [name]           Activate virtual environment (default: .venv)
+  init [name]           Create new virtual environment (default: .venv)
+  deps [--dev]          Install dependencies from pyproject.toml
+  check                 Show currently active venv info
+  run [app:path]        Run uvicorn server (default: main:app)
+  test                  Run all tests with pytest
+  help                  Show this help message
+
+Flags:
+  --dev                 Include dev dependencies (use with 'deps' command)
 
 Examples:
-  venv -s                  # Activate .venv
-  venv -s foobar           # Activate foobar venv
-  venv -i myenv            # Create myenv venv
-  venv -d                  # Install production dependencies
-  venv -d --dev            # Install production + dev dependencies
-  venv -c                  # Check active venv
-  venv -r                  # Run uvicorn with main:app
-  venv -r api:app          # Run uvicorn with custom path
-  venv -t                  # Run all tests
+  venv load             # Activate .venv
+  venv load myenv       # Activate myenv
+  venv init             # Create .venv
+  venv init myenv       # Create myenv
+  venv deps             # Install production dependencies
+  venv deps --dev       # Install production + dev dependencies
+  venv check            # Check active venv
+  venv run              # Run uvicorn with main:app
+  venv run api:app      # Run uvicorn with custom path
+  venv test             # Run all tests
 
 Typical workflow:
-  venv -i                  # Create .venv
-  venv -s                  # Activate .venv
-  venv -d --dev            # Install all dependencies (uses uv if available)
-  venv -r                  # Run the server
+  venv init             # Create .venv
+  venv load             # Activate .venv
+  venv deps --dev       # Install all dependencies (uses uv if available)
+  venv run              # Run the server
 EOF
-            ;;
-        *)
-            echo "Error: No action specified"
-            echo "Use --help or -h for usage information"
-            return 1
             ;;
     esac
 }
