@@ -2,6 +2,7 @@ cmd_venv() {
     local action=""
     local venv_name=".venv"
     local app_path=""
+    local install_dev=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -21,6 +22,14 @@ cmd_venv() {
                     venv_name="$1"
                     shift
                 fi
+                ;;
+            --install | --deps | -d)
+                action="install"
+                shift
+                ;;
+            --dev)
+                install_dev=true
+                shift
                 ;;
             --check | -c)
                 action="check"
@@ -58,7 +67,7 @@ cmd_venv() {
                 echo "✓ Activated virtual environment: $venv_name"
             else
                 echo "✗ Virtual environment not found: $venv_name/bin/activate"
-                echo "Tip: Use 'cmd_venv --init $venv_name' to create it"
+                echo "Tip: Use 'venv --init $venv_name' to create it"
                 return 1
             fi
             ;;
@@ -71,9 +80,55 @@ cmd_venv() {
             python3 -m venv "$venv_name"
             if [[ $? -eq 0 ]]; then
                 echo "✓ Virtual environment created: $venv_name"
-                echo "Tip: Use 'cmd_venv --start $venv_name' to activate it"
+                echo "Tip: Use 'venv --start $venv_name' to activate it"
             else
                 echo "✗ Failed to create virtual environment"
+                return 1
+            fi
+            ;;
+        install)
+            if [[ -z "$VIRTUAL_ENV" ]]; then
+                echo "✗ No virtual environment is active"
+                echo "Tip: Use 'venv --start' to activate one first"
+                return 1
+            fi
+
+            if [[ ! -f "pyproject.toml" ]]; then
+                echo "✗ pyproject.toml not found in current directory"
+                return 1
+            fi
+
+            # Check for uv, fallback to pip
+            local installer=""
+            if command -v uv &> /dev/null; then
+                installer="uv pip"
+                echo "Using uv (fast installer)"
+            elif command -v pip &> /dev/null; then
+                installer="pip"
+                echo "Using pip (uv not found - install with 'pip install uv' for faster installs)"
+            else
+                echo "✗ Neither uv nor pip found"
+                return 1
+            fi
+
+            if [[ "$install_dev" == true ]]; then
+                echo "Installing project with dev dependencies..."
+                $installer install -e ".[dev]"
+            else
+                echo "Installing project dependencies..."
+                $installer install -e .
+            fi
+
+            if [[ $? -eq 0 ]]; then
+                echo "✓ Dependencies installed successfully"
+                if [[ "$install_dev" == true ]]; then
+                    echo "  Installed: production + dev dependencies"
+                else
+                    echo "  Installed: production dependencies only"
+                    echo "  Tip: Use 'venv --install --dev' to include dev dependencies"
+                fi
+            else
+                echo "✗ Failed to install dependencies"
                 return 1
             fi
             ;;
@@ -90,7 +145,7 @@ cmd_venv() {
         run)
             if [[ -z "$VIRTUAL_ENV" ]]; then
                 echo "✗ No virtual environment is active"
-                echo "Tip: Use 'cmd_venv --start' to activate one first"
+                echo "Tip: Use 'venv --start' to activate one first"
                 return 1
             fi
 
@@ -101,7 +156,7 @@ cmd_venv() {
 
             if ! command -v uvicorn &> /dev/null; then
                 echo "✗ uvicorn not found"
-                echo "Tip: Install with 'pip install uvicorn'"
+                echo "Tip: Install with 'venv --install --dev'"
                 return 1
             fi
 
@@ -111,13 +166,13 @@ cmd_venv() {
         test)
             if [[ -z "$VIRTUAL_ENV" ]]; then
                 echo "✗ No virtual environment is active"
-                echo "Tip: Use 'cmd_venv --start' to activate one first"
+                echo "Tip: Use 'venv --start' to activate one first"
                 return 1
             fi
 
             if ! command -v pytest &> /dev/null; then
                 echo "✗ pytest not found"
-                echo "Tip: Install with 'pip install pytest'"
+                echo "Tip: Install with 'venv --install --dev'"
                 return 1
             fi
 
@@ -136,21 +191,31 @@ Usage:
   venv [option] [arguments]
 
 Options:
-  --start, -s [name]    Activate virtual environment (default: .venv)
-  --init, -i [name]     Create new virtual environment (default: .venv)
-  --check, -c           Show currently active venv info
-  --run, -r [app:path]  Run uvicorn server (default: main:app)
-  --test, -t            Run all tests with pytest (requires active venv)
-  --help, -h            Show this help message
+  --start, -s [name]       Activate virtual environment (default: .venv)
+  --init, -i [name]        Create new virtual environment (default: .venv)
+  --install, --deps, -d    Install dependencies from pyproject.toml
+    --dev                  Include dev dependencies (use with --install)
+  --check, -c              Show currently active venv info
+  --run, -r [app:path]     Run uvicorn server (default: main:app)
+  --test, -t               Run all tests with pytest (requires active venv)
+  --help, -h               Show this help message
 
 Examples:
-  venv -s              # Activate .venv
-  venv -s foobar       # Activate foobar venv
-  venv -i myenv        # Create myenv venv
-  venv -c              # Check active venv
-  venv -r              # Run uvicorn with main:app
-  venv -r api:app      # Run uvicorn with custom path
-  venv -t              # Run all tests
+  venv -s                  # Activate .venv
+  venv -s foobar           # Activate foobar venv
+  venv -i myenv            # Create myenv venv
+  venv -d                  # Install production dependencies
+  venv -d --dev            # Install production + dev dependencies
+  venv -c                  # Check active venv
+  venv -r                  # Run uvicorn with main:app
+  venv -r api:app          # Run uvicorn with custom path
+  venv -t                  # Run all tests
+
+Typical workflow:
+  venv -i                  # Create .venv
+  venv -s                  # Activate .venv
+  venv -d --dev            # Install all dependencies (uses uv if available)
+  venv -r                  # Run the server
 EOF
             ;;
         *)

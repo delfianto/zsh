@@ -50,9 +50,6 @@ import() {
   done
 }
 
-# Source the appropriate .env file based on the OS
-import "${ZDOTDIR}" ".env.${OSNAME}" ".env.dev"
-
 # Initialize ZSH auto-loaded functions
 # We also unfunction this later in .zshrc
 autoload_init() {
@@ -74,6 +71,9 @@ autoload_init() {
 # Load the common helper functions for all session
 # Without this, the functions will only be available on an interactive shell
 autoload_init "base"
+
+# Source the appropriate .env file based on the OS
+import "${ZDOTDIR}" ".env.${OSNAME}" ".env.dev"
 
 # Don't keep duplicates and ignore specific sets of command from history
 # https://unix.stackexchange.com/questions/18212/bash-history-ignoredups-and-erasedups-setting-conflict-with-common-history
