@@ -1,34 +1,66 @@
 cmd_lsenv() {
-  # Declare an associative array
-  declare -A env_vars
+  typeset -A env_vars
+  local pattern="$1"
 
-  # Use substitution to feed the output of env to the while loop
   while IFS='=' read -r key val; do
     env_vars[$key]="$val"
   done < <(env)
 
-  # get_env() {
-  #   local key="$1"
+  strip_ansi() {
+    printf '%s' "$1" | sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g'
+  }
 
-  #   if (( ${+env_vars[$key]} )); then
-  #     local val="${env_vars[$key]}"
-  #     if is_empty "$val"; then
-  #       val="[EMPTY]"
-  #     fi
-  #     stdout "$key: $val"
-  #   else
-  #     stdout "$key: [NOT FOUND]"
-  #   fi
-  # }
+  get_env() {
+    local key="$1"
 
-  # if has_args; then
-  #   while has_args; do
-  #     get_env "$1"
-  #     shift
-  #   done
-  # else
-  #   for key in ${(@n)${(k)env_vars}}; do
-  #     get_env "$key"
-  #   done
-  # fi
+    if (( ${+env_vars[$key]} )); then
+      local val="${env_vars[$key]}"
+      local display_val
+
+      if [[ -z "$val" ]]; then
+        display_val="[EMPTY]"
+      else
+        display_val="$(strip_ansi "$val")"
+      fi
+
+      printf '%s: %s\n' "$key" "$display_val"
+    fi
+  }
+
+  # Convert pattern to glob format if no wildcards present
+  convert_pattern() {
+    local pat="$1"
+
+    if [[ "$pat" == *\** ]]; then
+      echo "$pat"
+    else
+      echo "*${pat}*"
+    fi
+  }
+
+  local LC_COLLATE=C
+
+  if [[ -n "$pattern" ]]; then
+    local glob_pattern="$(convert_pattern "$pattern")"
+    local found=0
+
+    # Iterate through sorted keys and match with case-insensitive glob
+    for key in ${(@o)${(k)env_vars}}; do
+      # Use (#i) for case-insensitive matching
+      if [[ ${key} == (#i)${~glob_pattern} ]]; then
+        get_env "$key"
+        found=1
+      fi
+    done
+
+    if (( ! found )); then
+      echo "No environment variables match pattern: $pattern" >&2
+      return 1
+    fi
+  # Show all variables mode
+  else
+    for key in ${(@o)${(k)env_vars}}; do
+      get_env "$key"
+    done
+  fi
 }
