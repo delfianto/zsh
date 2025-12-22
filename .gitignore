@@ -10,3 +10,6 @@ myconf/
 *.histfile
 *.zcompdump
 *.zsh_history
+
+# host specific
+local.env

@@ -73,7 +73,10 @@ autoload_init() {
 autoload_init "base"
 
 # Source the appropriate .env file based on the OS
-import "${ZDOTDIR}" ".env.${OSNAME}" ".env.dev"
+import "${ZDOTDIR}/environment" \
+  "${OSNAME}.env" \
+  "devtools.env" \
+  "local.env"
 
 # Don't keep duplicates and ignore specific sets of command from history
 # https://unix.stackexchange.com/questions/18212/bash-history-ignoredups-and-erasedups-setting-conflict-with-common-history
