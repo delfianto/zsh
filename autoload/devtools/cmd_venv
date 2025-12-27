@@ -1,5 +1,4 @@
 cmd_venv() {
-    # First argument is the command
     if [[ $# -eq 0 ]]; then
         echo "Error: No command specified"
         echo "Use 'venv help' for usage information"
@@ -13,7 +12,6 @@ cmd_venv() {
     local command="$1"
     shift
 
-    # Parse remaining arguments based on command
     case $command in
       deps)
           # Parse --dev flag
@@ -52,7 +50,6 @@ cmd_venv() {
             ;;
     esac
 
-    # Execute command
     case $command in
         load)
             if [[ -f "$venv_name/bin/activate" ]]; then
@@ -91,8 +88,8 @@ cmd_venv() {
                 return 1
             fi
 
-            # Build installer command as array
             local installer_cmd=()
+
             if command -v uv &> /dev/null; then
                 installer_cmd=(uv pip)
                 echo "Using uv (fast installer)"
@@ -104,7 +101,6 @@ cmd_venv() {
                 return 1
             fi
 
-            # Build full install command
             if [[ "$install_dev" == true ]]; then
                 echo "Installing project with dev dependencies..."
                 "${installer_cmd[@]}" install -e ".[dev]"
@@ -143,15 +139,48 @@ cmd_venv() {
                 return 1
             fi
 
-            # Default to main:app if not specified
-            if [[ -z "$app_path" ]]; then
-                app_path="main:app"
-            fi
-
             if ! command -v uvicorn &> /dev/null; then
                 echo "✗ uvicorn not found"
                 echo "Tip: Install with 'venv deps --dev'"
                 return 1
+            fi
+
+            # Auto-detect main.py location if not specified via command line
+            if [[ -z "$app_path" ]]; then
+                local detected_path=""
+
+                # Use find to locate main.py, excluding common non-code directories
+                # Search up to 3 levels deep, prioritize shallower files
+                detected_path=$(find . -maxdepth 3 -name "main.py" \
+                    -not -path "*/.venv/*" \
+                    -not -path "*/venv/*" \
+                    -not -path "*/__pycache__/*" \
+                    -not -path "*/node_modules/*" \
+                    -not -path "*/.git/*" \
+                    -not -path "*/build/*" \
+                    -not -path "*/dist/*" \
+                    2>/dev/null | \
+                    awk '{print length, $0}' | \
+                    sort -n | \
+                    head -1 | \
+                    cut -d' ' -f2-)
+
+                # Remove leading ./ if present
+                detected_path="${detected_path#./}"
+
+                if [[ -n "$detected_path" ]]; then
+                    # Convert file path to Python module path
+                    # Remove .py extension and convert / to .
+                    app_path="${detected_path%.py}"
+                    app_path="${app_path//\//.}:app"
+                    echo "✓ Auto-detected: $detected_path → $app_path"
+                else
+                    # Fallback to default
+                    app_path="main:app"
+                    echo "⚠ No main.py found (searched up to 3 levels deep), using default: $app_path"
+                fi
+            else
+                echo "✓ Using specified path: $app_path"
             fi
 
             echo "Starting uvicorn server: $app_path"
@@ -189,7 +218,7 @@ Commands:
   init [name]           Create new virtual environment (default: .venv)
   deps [--dev]          Install dependencies from pyproject.toml
   check                 Show currently active venv info
-  run [app:path]        Run uvicorn server (default: main:app)
+  run [app:path]        Run uvicorn server (auto-detects main.py location)
   test                  Run all tests with pytest
   help                  Show this help message
 
@@ -204,15 +233,25 @@ Examples:
   venv deps             # Install production dependencies
   venv deps --dev       # Install production + dev dependencies
   venv check            # Check active venv
-  venv run              # Run uvicorn with main:app
-  venv run api:app      # Run uvicorn with custom path
+  venv run              # Auto-detect and run (searches: main.py, src/main.py, app/main.py, etc.)
+  venv run src.main:app # Override with custom path
   venv test             # Run all tests
+
+Auto-detection for 'venv run':
+  Automatically searches for main.py up to 3 levels deep in your project,
+  excluding common non-code directories (.venv, __pycache__, node_modules, etc.)
+
+  Prioritizes shallower paths (e.g., src/main.py over src/api/v1/main.py)
+
+  Automatically converts file path to Python module path:
+    src/main.py → src.main:app
+    app/server/main.py → app.server.main:app
 
 Typical workflow:
   venv init             # Create .venv
   venv load             # Activate .venv
   venv deps --dev       # Install all dependencies (uses uv if available)
-  venv run              # Run the server
+  venv run              # Auto-detect and run the server
 EOF
             ;;
     esac
