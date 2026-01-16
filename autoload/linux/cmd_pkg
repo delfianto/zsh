@@ -1,75 +1,37 @@
 # -*- mode: sh -*-
 
 cmd_pkg() {
-  if ! has_cmd yay; then
-    return 1
-  fi
+  local HELPER="paru" # CachyOS prefers the Rust-based paru
+  if ! command -v $HELPER &> /dev/null; then HELPER="yay"; fi
 
   case "$1" in
-    'logs')
-      cat /var/log/pacman.log
-      ;;
-    'build')
-      makepkg -sc
-      ;;
-    'check')
-      yay "${@:2}"
-      ;;
-    'clean')
-      echo 'y' | yay -Sc
-      ;;
-    'deps')
-      pactree -d 1 "${@:2}"
-      ;;
-    'file')
-      yay -Qlq "${@:2}"
-      ;;
-    'find')
-      yay -Ss "${@:2}"
-      ;;
-    'info')
-      yay -Qi "${@:2}"
-      ;;
-    'stat')
-      yay -Ps
-      ;;
-    'orphan')
-      yay -Qdtq
-      ;;
+    'logs')   cat /var/log/pacman.log | tail -n 50 ;;
+    'build')  makepkg -sc ;;
+    'check')  $HELPER "${@:2}" ;;
+    'clean')  $HELPER -Sc --noconfirm ;;
+    'deps')   pactree -d 1 "${@:2}" ;;
+    'orphan') $HELPER -Qdtq ;;
     'nodeps')
-      if [[ ! -z $(pkg orphan) ]]; then
-        tput setaf 1
-        stdout "WARNING: Removing all unneeded dependencies..."
-        tput sgr0
-
-        yay -Yc
+      echo "Removing all unneeded dependencies..."
+      $HELPER -Yc ;; # Clean AUR dependencies
+    'ls'|'list') $HELPER -Qs "${@:2}" ;;
+    'in'|'install')
+      if [[ -f "${2}" ]]; then
+        # If arg is a file, install from it (skipping installed ones)
+        echo "Installing from list: ${2}..."
+        $HELPER -S --needed - < "${2}"
       else
-        stdout "No unneeded dependencies in the system."
-      fi
-      ;;
-    'l' | 'ls' | 'list')
-      yay -Qs ${@:2}
-      ;;
-    'i' | 'in' | 'install')
-      yay -Sy "${@:2}"
-      ;;
-    'r' | 'rm' | 'remove')
-      yay -R ${@:2}
-      ;;
-    'u' | 'up' | 'upgrade')
-      yay -Syu
-      ;;
-    'yu' | 'yup')
-      yes | yay -Syu
-      ;;
-    's' | 'sy' | 'update' )
-      yay -Syy
-      ;;
-    'q' | 'qu' | 'quiet')
-      yay --editmenu --nocleanmenu --nodiffmenu --noeditmenu --noremovemake --save
-      ;;
-    *)
-      yay ${@:1}
-      ;;
+        # Otherwise, standard install
+        $HELPER -S "${@:2}"
+      fi ;;
+    'rm'|'remove') $HELPER -Rns "${@:2}" ;; # -Rns ensures a cleaner removal
+    'up'|'upgrade')
+      if command -v cachy-update &> /dev/null; then
+        cachy-update # Use specialized CachyOS update tool
+      else
+        $HELPER -Syu
+      fi ;;
+    'yup') $HELPER -Syu --noconfirm ;;
+    *) $HELPER "${@:1}" ;;
   esac
 }
