@@ -88,7 +88,16 @@ export SAVEHIST="5000"
 
 export EDITOR=/usr/bin/nvim
 export VISUAL=/usr/bin/nano
-export PAGER=/usr/bin/less
+
+# Try to use `ov` as default pager
+if (( $+commands[ov] )); then
+  export PAGER=/usr/bin/ov
+  export BAT_PAGER=/usr/bin/ov
+  export SYSTEMD_PAGER=/usr/bin/ov
+else
+  export PAGER=/usr/bin/less
+  export SYSTEMD_PAGER=/usr/bin/less
+fi
 
 export ZLE_RPROMPT_INDENT=0               # don't leave an empty space after right prompt
 export ZLE_REMOVE_SUFFIX_CHARS=''         # don't eat space when typing '|' after a tab completion
