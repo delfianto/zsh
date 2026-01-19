@@ -1,37 +1,97 @@
 # -*- mode: sh -*-
 
 cmd_pkg() {
-  local HELPER="paru" # CachyOS prefers the Rust-based paru
+  local HELPER="paru"
+  # Fallback to yay if paru is missing
   if ! command -v $HELPER &> /dev/null; then HELPER="yay"; fi
 
+  if [[ -z "$1" ]]; then
+      echo "Usage: pkg [install|remove|up|find|info|files|whose|ls|...]"
+      return 1
+  fi
+
   case "$1" in
-    'logs')   cat /var/log/pacman.log | tail -n 50 ;;
-    'build')  makepkg -sc ;;
-    'check')  $HELPER "${@:2}" ;;
-    'clean')  $HELPER -Sc --noconfirm ;;
-    'deps')   pactree -d 1 "${@:2}" ;;
-    'orphan') $HELPER -Qdtq ;;
-    'nodeps')
-      echo "Removing all unneeded dependencies..."
-      $HELPER -Yc ;; # Clean AUR dependencies
-    'ls'|'list') $HELPER -Qs "${@:2}" ;;
-    'in'|'install')
-      if [[ -f "${2}" ]]; then
-        # If arg is a file, install from it (skipping installed ones)
-        echo "Installing from list: ${2}..."
-        $HELPER -S --needed - < "${2}"
-      else
-        # Otherwise, standard install
-        $HELPER -S "${@:2}"
-      fi ;;
-    'rm'|'remove') $HELPER -Rns "${@:2}" ;; # -Rns ensures a cleaner removal
+    # System Maintenance
     'up'|'upgrade')
       if command -v cachy-update &> /dev/null; then
-        cachy-update # Use specialized CachyOS update tool
+        cachy-update
       else
-        $HELPER -Syu
+        $HELPER -Syyu
       fi ;;
     'yup') $HELPER -Syu --noconfirm ;;
+    'clean')
+      find /var/cache/pacman/pkg/ \
+        -maxdepth 1 -type d -name "download-*" \
+        -exec sudo rmdir --ignore-fail-on-non-empty {} +
+
+      $HELPER -Sc --noconfirm ;;
+    'orphans')
+      # Get the list of orphans (Quiet mode)
+      local orphans=$($HELPER -Qdtq)
+
+      # Check if the list is empty to prevent errors
+      if [[ -z "$orphans" ]]; then
+        echo "No unneeded dependencies (orphans) found."
+      else
+        echo "Found unneeded dependencies:"
+        echo "$orphans"
+        echo "-----------------------------"
+        # Pass the list to the remove command
+        # $orphans is unquoted so the shell splits the list into arguments
+        $HELPER -Rns $orphans
+      fi ;;
+
+    # Package Management
+    'in'|'install')
+      if [[ -f "${2}" ]]; then
+        echo "Reading package list from: ${2}..."
+        # Grabs the first column, ignoring comments (#) and empty lines
+        local pkgs=($(awk '/^[[:alnum:]]/ {print $1}' "${2}"))
+
+        if [[ ${#pkgs[@]} -eq 0 ]]; then
+          echo "Error: No valid package names found in ${2}."
+          return 1
+        fi
+
+        echo "Installing ${#pkgs[@]} packages..."
+        $HELPER -S --needed "${pkgs[@]}"
+      else
+        $HELPER -S "${@:2}"
+      fi ;;
+    'rm'|'remove') $HELPER -Rns "${@:2}" ;;
+
+    # Search & Query
+
+    # ls/list: Lists installed packages.
+    # If a generic term is provided (e.g., 'pkg ls fire'), matches partial names/descriptions.
+    'ls'|'list') $HELPER -Qs "${@:2}" ;;
+
+    # find: Search remote repositories (AUR/Official)
+    'find') $HELPER -Ss "${@:2}" ;;
+
+    # info: Get package information (Sync DB info)
+    'info') $HELPER -Qi "${@:2}" ;;
+
+    # files: List files owned by a specific INSTALLED package
+    'files') $HELPER -Ql "${@:2}" ;;
+
+    # whose: Check which package owns a specific file or command
+    'whose')
+      local target="${2}"
+      # If target is not a file on disk, check if it is a command in PATH
+      if [[ ! -e "$target" ]] && command -v "$target" &> /dev/null; then
+        target=$(command -v "$target")
+        echo "Resolved '${2}' to '${target}'"
+      fi
+      $HELPER -Qo "$target" ;;
+
+    # Utils
+    'deps') pactree -d 1 "${@:2}" ;;
+    'logs') tail -n 50 /var/log/pacman.log ;;
+    'build') makepkg -sc ;;
+    'check') $HELPER "${@:2}" ;;
+
+    # Catch-all
     *) $HELPER "${@:1}" ;;
   esac
 }

@@ -17,9 +17,9 @@ esac
 export ZSH_DEBUG_INIT="${ZSH_DEBUG_INIT:-0}"
 
 # ZSH dotfile locations
-export DOTDIR="${DOTDIR:-${HOME}/.config/dotfiles}"
-export MYCONF="${MYCONF:-${HOME}/.config/myconf}"
-export ZDOTDIR="${ZDOTDIR:-${HOME}/.config/zsh}"
+export DOTDIR="${DOTDIR:-${HOME}/.dotfiles}"
+export MYCONF="${MYCONF:-${HOME}/.myconf}"
+export ZDOTDIR="${ZDOTDIR:-${HOME}/.zsh}"
 export ZFUNCDIR="${ZFUNCDIR:-${ZDOTDIR}/autoload}"
 
 # Ensure .local/bin is added to PATH
