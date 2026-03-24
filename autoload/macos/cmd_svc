@@ -1,0 +1,22 @@
+# -*- mode: sh -*-
+cmd_svc() {
+  if ! has_cmd brew; then
+    return 1
+  fi
+
+  case "$1" in
+    'run' | 'start' | 'stop' | 'restart')
+      [[ -n "$2" ]] && brew services "$1" "$2" || "${funcstack[1]}" 'help'
+      ;;
+    'ls' | 'list' | 'cleanup')
+      brew services "$1"
+      ;;
+    'help')
+      echo "Usage: ${funcstack[1]} [ list | run | start | stop | restart | cleanup ] [...]"
+      echo "Running without any argument will list all available services"
+      ;;
+    *)
+      "${funcstack[1]}" 'ls'
+      ;;
+  esac
+}

@@ -1,0 +1,12 @@
+# add_path; validate and add a directory to the PATH variable.
+# add_path [dir_name] [before|after]
+# Deduplication is handled by `typeset -aU path` in .zshenv.
+
+add_path() {
+  [[ -d "$1" && -r "$1" ]] || return
+  if [[ "$2" = "after" ]]; then
+    path+=("$1")
+  else
+    path=("$1" $path)
+  fi
+}

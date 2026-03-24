@@ -1,0 +1,87 @@
+# -*- mode: sh -*-
+
+cmd_pulse_eq() {
+  local preset_dir="${XDG_CONFIG_HOME:-$HOME/.config}/easyeffects/output"
+
+  # --- Sanity checks ---
+  if ! has_cmd easyeffects; then
+    return 1
+  fi
+
+  # Check if the preset directory exists
+  if [[ ! -d "$preset_dir" ]]; then
+    stderr "Error: EasyEffects preset directory not found at '$preset_dir'"
+    return 1
+  fi
+
+  # Find preset files
+  # The (N.) glob qualifier: N=nullglob (no error if no match), .=regular files only
+  local preset_files=("$preset_dir"/*.json(N.))
+
+  if (( ${#preset_files[@]} == 0 )); then
+    stderr "Error: No EasyEffects preset files (.json) found in '$preset_dir'."
+    stderr "Please ensure EasyEffects has saved presets."
+    return 1
+  fi
+
+  # --- Create the menu entries ---
+  local preset_names=()
+  local flat_response_preset=""
+
+  for file in $preset_files; do
+    # :t gets the tail (basename), :r gets the root (removes extension)
+    local name="${file:t:r}"
+
+    if [[ "$name" == "Flat Response" ]]; then
+      flat_response_preset="$name"
+    else
+      preset_names+=("$name")
+    fi
+  done
+
+  # Add "Flat Response" and "Quit" option to the *end* of the sorted list
+  if [[ -n "$flat_response_preset" ]]; then
+    preset_names+=("$flat_response_preset")
+  fi
+
+  preset_names+=("Quit")
+  local num_options=${#preset_names[@]}
+
+  # --- Main logic ---
+  # Display the menu and prompt the user
+  while true; do
+    stdout "Available EasyEffects Output Presets:"
+    for i in {1..$num_options}; do
+      stdout "  $i) ${preset_names[i]}"
+    done
+
+    stdout ""
+    # Prompt user for input
+    read -r reply_num\?'Please select an option (enter number): '
+
+    # Validate input
+    if [[ "$reply_num" =~ ^[0-9]+$ ]] && (( reply_num >= 1 && reply_num <= num_options )); then
+      choice="${preset_names[reply_num]}"
+
+      if [[ "$choice" == "Quit" ]]; then
+        stdout "Exiting preset switcher."
+        break
+      else
+        if easyeffects --load-preset "$choice"; then
+          stdout "Successfully applied preset '$choice'."
+        else
+          stderr "Error: Failed to apply preset '$choice'. Check EasyEffects logs."
+        fi
+
+        # Exit the while loop after action
+        break
+      fi
+    else
+      stdout ""
+      stderr "Invalid selection: '$reply_num'. Please enter a number between 1 and $num_options."
+      stdout ""
+    fi
+  done
+
+  return 0
+}

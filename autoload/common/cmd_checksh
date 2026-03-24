@@ -1,0 +1,126 @@
+cmd_checksh() {
+  # Suppress job control notifications for background version checks
+  setopt LOCAL_OPTIONS NO_MONITOR NO_NOTIFY
+
+  local reset=$'\e[0m'
+  local bold=$'\e[1m'
+  local dim=$'\e[2m'
+  local cyan=$'\e[36m'
+  local green=$'\e[32m'
+  local yellow=$'\e[33m'
+
+  # Resolve what a command actually points to (alias → binary → not found)
+  _resolve() {
+    local name="$1"
+    local al="${aliases[$name]}"
+    if [[ -n "$al" ]]; then
+      printf "  ${green}%-8s${reset} → %s\n" "$name" "$al"
+    elif (( $+commands[$name] )); then
+      printf "  ${dim}%-8s${reset} → %s\n" "$name" "${commands[$name]}"
+    else
+      printf "  ${dim}%-8s${reset}   (not found)\n" "$name"
+    fi
+  }
+
+  # Header
+  printf "\n${bold}${cyan}Shell Environment${reset}\n"
+  printf "${dim}─────────────────────────────────────${reset}\n"
+  printf "  OS:        %s (%s)\n" "$OSNAME" "$OSTYPE"
+  printf "  Shell:     zsh %s\n" "$ZSH_VERSION"
+  printf "  ZDOTDIR:   %s\n" "$ZDOTDIR"
+  printf "  EDITOR:    %s\n" "${VISUAL:-$EDITOR}"
+  printf "  PAGER:     %s\n" "$PAGER"
+  printf "  Terminal:  %s\n" "${TERM_PROGRAM:-$TERM}"
+
+  if [[ "$OSNAME" = "macos" ]] && (( $+commands[brew] )); then
+    printf "  Homebrew:  %s\n" "$(brew --version 2>/dev/null | head -1)"
+  fi
+
+  # Prompt
+  printf "\n${bold}${cyan}Prompt${reset}\n"
+  printf "${dim}─────────────────────────────────────${reset}\n"
+  if (( $+commands[starship] )); then
+    printf "  ${green}starship${reset}  %s\n" "$(starship --version 2>/dev/null | head -1)"
+  else
+    printf "  ${dim}default zsh prompt${reset}\n"
+  fi
+
+  # Core command replacements
+  printf "\n${bold}${cyan}Core Commands${reset}\n"
+  printf "${dim}─────────────────────────────────────${reset}\n"
+  local -a core_cmds=(cat ls ll la lla df du grep find vi vim)
+  for cmd in $core_cmds; do
+    _resolve "$cmd"
+  done
+
+  # Enhanced tools — collect versions in parallel
+  printf "\n${bold}${cyan}Modern CLI Tools${reset}\n"
+  printf "${dim}─────────────────────────────────────${reset}\n"
+
+  # Ordered list: name|alternatives (comma-sep)|replaces
+  local -a tool_list=(
+    "bat|bat|cat"
+    "btm|btm|top/htop"
+    "delta|delta|diff/pager"
+    "duf|duf|df"
+    "dust|dust|du"
+    "eza|eza|ls"
+    "fd|fd|find"
+    "fzf|fzf|fuzzy finder"
+    "gdu|gdu,gdu-go|du"
+    "hyperfine|hyperfine|time/bench"
+    "procs|procs|ps"
+    "rg|rg|grep"
+    "sd|sd|sed"
+    "zoxide|zoxide|cd"
+  )
+
+  # Grab all versions in parallel (dump full output, parse later)
+  local tmpdir="${TMPDIR:-/tmp}/checksh.$$"
+  mkdir -p "$tmpdir"
+
+  for entry in $tool_list; do
+    local bins="${${entry#*|}%%|*}"
+    for bin in ${(s:,:)bins}; do
+      if (( $+commands[$bin] )); then
+        { ${commands[$bin]} --version 2>/dev/null > "$tmpdir/$bin" } &
+      fi
+    done
+  done
+  wait
+
+  for entry in $tool_list; do
+    local name="${entry%%|*}"
+    local bins="${${entry#*|}%%|*}"
+    local replaces="${entry##*|}"
+
+    # Find first available binary from alternatives
+    local found_bin=""
+    for bin in ${(s:,:)bins}; do
+      if (( $+commands[$bin] )); then
+        found_bin="$bin"
+        break
+      fi
+    done
+
+    if [[ -n "$found_bin" ]]; then
+      local ver=""
+      [[ -r "$tmpdir/$found_bin" ]] && ver="$(< "$tmpdir/$found_bin")"
+      # Extract first semver-like pattern from anywhere in the output
+      if [[ "$ver" =~ [0-9]+\.[0-9]+(\.[0-9]+)? ]]; then
+        ver="$MATCH"
+      else
+        ver=""
+      fi
+      local label="$name"
+      [[ "$found_bin" != "$name" ]] && label="${name} (${found_bin})"
+      printf "  ${green}%-18s${reset} ${dim}replaces %-14s${reset} %s\n" "$label" "$replaces" "$ver"
+    else
+      printf "  ${yellow}%-18s${reset} ${dim}replaces %-14s${reset} (not installed)\n" "$name" "$replaces"
+    fi
+  done
+
+  rm -rf "$tmpdir"
+  printf "\n"
+  unfunction _resolve 2>/dev/null
+}

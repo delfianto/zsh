@@ -1,0 +1,22 @@
+cmd_func() {
+  case "$1" in
+    '-l' | 'list')
+      print -l ${(ok)functions}
+      ;;
+    '-c' | 'check')
+      typeset -f "$2" > /dev/null
+      (( $? == 0 )) && stdout 'true' || stdout 'false'
+      ;;
+    '-h' | 'help')
+      stdout "Usage: func [OPTIONS]"
+      stdout "Running without any option will trigger check operation"
+      stdout ""
+      stdout "  -l, list   list all defined functions"
+      stdout "  -c, check  check whether the given name is a valid function, return true or false"
+      stdout "  -h, help   show help message"
+      ;;
+    *)
+      "${funcstack[1]}" help
+      ;;
+  esac
+}

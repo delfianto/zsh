@@ -1,0 +1,5 @@
+# -*- mode: sh -*-
+
+cmd_cpufreq() {
+  watch -n2 -t 'printf "Monitoring CPU Frequency\n\n"; grep "^[c]pu MHz" /proc/cpuinfo | awk "{ printf \"CPU%02d: %.1f MHz\\n\", core++, \$4 }" | column'
+}

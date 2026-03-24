@@ -1,0 +1,40 @@
+cmd_lsenv() {
+  typeset -A env_vars
+  local pattern="$1"
+
+  while IFS='=' read -r key val; do
+    env_vars[$key]="$val"
+  done < <(env)
+
+  local LC_COLLATE=C
+
+  # Convert pattern to glob format if no wildcards present
+  local glob_pattern="$pattern"
+  if [[ -n "$pattern" && "$pattern" != *\** ]]; then
+    glob_pattern="*${pattern}*"
+  fi
+
+  local found=0
+
+  for key in ${(@o)${(k)env_vars}}; do
+    # If pattern is set, filter with case-insensitive glob
+    if [[ -n "$pattern" ]] && [[ ${key} != (#i)${~glob_pattern} ]]; then
+      continue
+    fi
+
+    found=1
+    local val="${env_vars[$key]}"
+
+    if [[ -z "$val" ]]; then
+      printf '%s: [EMPTY]\n' "$key"
+    else
+      # Strip ANSI escape codes inline
+      printf '%s: %s\n' "$key" "${val//\x1b\[[0-9;]#[a-zA-Z]/}"
+    fi
+  done
+
+  if [[ -n "$pattern" ]] && (( ! found )); then
+    echo "No environment variables match pattern: $pattern" >&2
+    return 1
+  fi
+}

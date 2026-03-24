@@ -1,0 +1,9 @@
+# -*- mode: sh -*-
+
+cmd_sudo_conf() {
+  if [[ -z "$1" ]]; then
+    sudo visudo
+  else
+    sudo visudo -f /etc/sudoers.d/"$1"
+  fi
+}
