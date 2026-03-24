@@ -1,0 +1,34 @@
+cmd_jstatd() {
+  local exec='jstatd'
+  local host="${host:-localhost}"
+  local port="${port:-9090}"
+
+  if [[ -z "$JAVA_HOME" ]]; then
+    echo "JAVA_HOME is not set"
+    return 1
+  fi
+
+  if ! has_cmd "$exec"; then
+    return 1
+  fi
+
+  local policy="${XDG_CONFIG_HOME:-$HOME/.config}/jstatd.all.policy"
+
+  [[ -f "$policy" ]] || {
+    cat >"$policy" <<'POLICY'
+grant codebase "file:${java.home}/lib/tools.jar" {
+permission java.security.AllPermission;
+};
+POLICY
+    chmod 600 "${policy}"
+  }
+
+  "$exec" \
+    -Djava.rmi.server.logCall=true \
+    -Djava.rmi.server.hostname="$host" \
+    -Djava.security.policy="$policy" \
+    -p "$port" || {
+    stderr "Failed to start $exec"
+    return 1
+  }
+}

@@ -1,0 +1,34 @@
+# -*- mode: sh -*-
+# macOS specific initialization
+
+# Auto-unlock login keychain over SSH
+# Password is read from a file instead of interactive prompt.
+# Setup: echo "your-password" > ~/.ssh/.keychain_pass && chmod 600 ~/.ssh/.keychain_pass
+if [[ -n "$SSH_CONNECTION" ]]; then
+  local _kc_db="${HOME}/Library/Keychains/login.keychain-db"
+  local _kc_pass_file="${HOME}/.ssh/keychain_pass"
+
+  if ! security show-keychain-info "$_kc_db" >/dev/null 2>&1; then
+    if [[ -r "$_kc_pass_file" ]]; then
+      security unlock-keychain -p "$(< "$_kc_pass_file")" "$_kc_db"
+    else
+      stderr "Keychain locked and no password file found at ${_kc_pass_file}"
+    fi
+  fi
+fi
+
+# Initialize Homebrew (sets PATH, MANPATH, INFOPATH, HOMEBREW_PREFIX, etc.)
+if [[ -x "${HOMEBREW_PREFIX}/bin/brew" ]]; then
+  eval "$(${HOMEBREW_PREFIX}/bin/brew shellenv)"
+
+  export LC_ALL="en_US.UTF-8"
+
+  # Add GNU coreutils to PATH (brew shellenv doesn't handle this)
+  if (( ${HOMEBREW_GNU_UTILS:-1} )); then
+    local -a gnu_pkgs=(coreutils findutils gnu-indent gnu-which gnu-sed gnu-tar)
+    for gnu in "${gnu_pkgs[@]}"; do
+      local gnu_lib="${HOMEBREW_PREFIX}/opt/${gnu}/libexec"
+      [[ -d "${gnu_lib}/gnubin" ]] && path=("${gnu_lib}/gnubin" $path)
+    done
+  fi
+fi

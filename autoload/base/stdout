@@ -1,0 +1,6 @@
+# stdout; safely print arguments to standard output stream (wraps print <arg> --)
+# stdout [args...]
+
+stdout() {
+  print -Pr -- "$@"
+}

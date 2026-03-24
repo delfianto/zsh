@@ -1,0 +1,26 @@
+# -*- mode: sh -*-
+
+cmd_beer() {
+  local src='https://raw.githubusercontent.com/Homebrew/install/HEAD'
+
+  case "$1" in
+    'setup')
+      if has_cmd brew; then
+        echo 'Homebrew is already installed'
+        return 1
+      fi
+
+      /bin/bash -c "$(curl -fsSL $src/install.sh)"
+      ;;
+    'purge')
+      /bin/bash -c "$(curl -fsSL $src/uninstall.sh)"
+      ;;
+    'chown')
+      # https://stackoverflow.com/questions/16432071/how-to-fix-homebrew-permissions/46844441#46844441
+      sudo chown -Rv $(whoami) $(brew --prefix)/*
+      ;;
+    *)
+      echo "Usage: $0 [ setup | purge ]"
+      ;;
+  esac
+}
