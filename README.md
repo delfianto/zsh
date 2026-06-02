@@ -27,11 +27,11 @@ ln -s ~/.config/zsh/.zshenv ~/.zshenv
 
 ## Structure
 
-See [plans/STRUCTURE.md](plans/STRUCTURE.md) for the full file tree, or just `ls` around — it's not that deep.
+See [docs/STRUCTURE.md](docs/STRUCTURE.md) for the full file tree, or just `ls` around — it's not that deep.
 
 The short version:
 - `environment/` — exports and env vars (per-OS + devtools)
-- `bootstrap/` — runtime init: aliases, PATH setup, tool detection
+- `interactive/` — interactive-shell runtime init: aliases, PATH setup, tool detection
 - `autoload/` — lazy functions sorted by `base`, `common`, `devtools`, `linux`, `macos`
 
 ## Debug

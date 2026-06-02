@@ -3,7 +3,7 @@
 
 # Auto-unlock login keychain over SSH
 # Password is read from a file instead of interactive prompt.
-# Setup: echo "your-password" > ~/.ssh/.keychain_pass && chmod 600 ~/.ssh/.keychain_pass
+# Setup: echo "your-password" > ~/.ssh/keychain_pass && chmod 600 ~/.ssh/keychain_pass
 if [[ -n "$SSH_CONNECTION" ]]; then
   local _kc_db="${HOME}/Library/Keychains/login.keychain-db"
   local _kc_pass_file="${HOME}/.ssh/keychain_pass"

@@ -12,7 +12,7 @@
 │   ├── devtools.env              # Cross-platform: dev tool config (bun, uv)
 │   └── local.env                 # Host-specific overrides (gitignored, not committed)
 │
-├── bootstrap/                    # Runtime initialization, sourced in .zshrc
+├── interactive/                  # Interactive-shell runtime init, sourced in .zshrc
 │   ├── macos                     # macOS: keychain unlock, brew shellenv, GNU coreutils PATH
 │   ├── linux                     # Linux: static aliases (hdmon, pacman, dmesg, etc.)
 │   └── common                    # Cross-platform: cmd_* auto-aliasing, tool replacement aliases
@@ -51,7 +51,7 @@
 │       ├── cmd_pkg               # Unified Homebrew package manager wrapper
 │       └── cmd_svc               # Homebrew services management
 │
-├── plans/                        # Project documentation
+├── docs/                         # Project documentation
 │   ├── README.md                 # Change log and fix tracker
 │   ├── STRUCTURE.md              # This file
 │   └── ARCHITECTURE.md           # How the init system works
