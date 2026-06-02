@@ -60,19 +60,19 @@ Only runs for interactive sessions. Handles everything the user sees and touches
   ├─ Plugin loading (platform-aware paths):
   │    zsh-autosuggestions, zsh-syntax-highlighting, zsh-history-substring-search
   │
-  ├─ import bootstrap/{$OSNAME, common}     ← OS before common (order matters!)
+  ├─ import interactive/{$OSNAME, common}   ← OS before common (order matters!)
   │    │
-  │    ├─ bootstrap/$OSNAME:
+  │    ├─ interactive/$OSNAME:
   │    │    macOS: keychain unlock, brew shellenv, GNU coreutils PATH
   │    │    Linux: static system aliases
   │    │
-  │    └─ bootstrap/common:
+  │    └─ interactive/common:
   │         1. Auto-alias all cmd_* functions to kebab-case (see below)
   │         2. Tool replacement aliases (bat→cat, eza→ls, duf→df, etc.)
   │         3. Static aliases (cp -v, grep --color, etc.)
   │
   ├─ hash -r
-  │    Rebuilds command hash table after bootstrap modified PATH.
+  │    Rebuilds command hash table after interactive init modified PATH.
   │    Critical on macOS where brew shellenv adds /opt/homebrew/bin.
   │
   ├─ Tool initialization (fzf, zoxide, starship)
@@ -86,7 +86,7 @@ Only runs for interactive sessions. Handles everything the user sees and touches
 ### Autoload Convention: `cmd_*` → Kebab-case Aliases
 
 Functions named `cmd_foo_bar` in autoload directories are automatically aliased
-to `foo-bar` by `bootstrap/common`. The conversion:
+to `foo-bar` by `interactive/common`. The conversion:
 
 1. Scan all loaded functions for names matching `cmd_*`
 2. Convert underscores to hyphens, strip the `cmd-` prefix
@@ -120,7 +120,7 @@ Three-layer approach:
 | Layer | Linux | macOS | Both |
 |-------|-------|-------|------|
 | **environment/** | linux.env | macos.env | devtools.env, local.env |
-| **bootstrap/** | linux | macos | common |
+| **interactive/** | linux | macos | common |
 | **autoload/** | autoload/linux/ | autoload/macos/ | autoload/base/, common/, devtools/ |
 
 The OS is detected once in `.zshenv` via `$OSTYPE` and stored in `$OSNAME`.
@@ -142,17 +142,17 @@ export ZDOTDIR="${ZDOTDIR:-${${(%):-%x}:A:h}}"
 This means the config works on any machine with just one symlink:
 `~/.zshenv → ~/.config/zsh/.zshenv`
 
-### Bootstrap Source Order
+### Interactive Init Source Order
 
-`.zshrc` sources OS bootstrap **before** common:
+`.zshrc` sources the OS interactive file **before** common:
 
 ```zsh
-import "${ZDOTDIR}/bootstrap" "${OSNAME}" "common"
+import "${ZDOTDIR}/interactive" "${OSNAME}" "common"
 ```
 
 This is critical because:
-1. `bootstrap/macos` runs `brew shellenv` which adds `/opt/homebrew/bin` to PATH
-2. `bootstrap/common` checks for tools like `eza`, `gls`, `bat` in PATH
+1. `interactive/macos` runs `brew shellenv` which adds `/opt/homebrew/bin` to PATH
+2. `interactive/common` checks for tools like `eza`, `gls`, `bat` in PATH
 3. If common ran first, it wouldn't find Homebrew-installed tools
 
 ### Debug Mode

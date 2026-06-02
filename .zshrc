@@ -99,24 +99,10 @@ bindkey '^[[1;5C' forward-word                                  #
 bindkey '^H' backward-kill-word                                 # delete previous word with ctrl+backspace
 bindkey '^[[Z' undo                                             # Shift+tab undo last action
 
-# Plugins sections: Enable fish style features
-local plugin_dir=""
-case "$OSNAME" in
-  linux)  plugin_dir="/usr/share/zsh/plugins" ;;
-  macos)  plugin_dir="${HOMEBREW_PREFIX:-/opt/homebrew}/share" ;;
-esac
+# Load the interactive init files (OS first to set up PATH, then common for aliases)
+import "${ZDOTDIR}/interactive" "${OSNAME}" "common"
 
-if [[ -n "$plugin_dir" ]]; then
-  import "$plugin_dir" \
-    zsh-autosuggestions/zsh-autosuggestions.zsh \
-    zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
-    zsh-history-substring-search/zsh-history-substring-search.zsh
-fi
-
-# Load the rest of zshrc files (OS first to set up PATH, then common for aliases)
-import "${ZDOTDIR}/bootstrap" "${OSNAME}" "common"
-
-# Rehash command table after bootstrap may have modified PATH (e.g. brew shellenv)
+# Rehash command table after interactive init may have modified PATH (e.g. brew shellenv)
 hash -r
 
 # Load FZF
@@ -134,8 +120,25 @@ if has_cmd -q starship; then
   eval "$(starship init zsh)"
 fi
 
+# Plugins: fish-style features. Sourced LAST, after every other ZLE widget
+# (fzf, zoxide, etc.) is defined — zsh-syntax-highlighting must wrap them all.
+# Internal order matters: autosuggestions -> syntax-highlighting -> history-substring-search.
+local plugin_dir=""
+case "$OSNAME" in
+  linux)  plugin_dir="/usr/share/zsh/plugins" ;;
+  macos)  plugin_dir="${HOMEBREW_PREFIX:-/opt/homebrew}/share" ;;
+esac
+
+if [[ -n "$plugin_dir" ]]; then
+  import "$plugin_dir" \
+    zsh-autosuggestions/zsh-autosuggestions.zsh \
+    zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+    zsh-history-substring-search/zsh-history-substring-search.zsh
+fi
+
 if (( ZSH_DEBUG_INIT )); then
   printf "Shell initialization took %.3f milliseconds.\n" "$(( (EPOCHREALTIME - _zsh_start) * 1000 ))"
 fi
 
 unset -f autoload_init import
+unset zcompdump plugin_dir _zsh_start

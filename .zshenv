@@ -17,11 +17,10 @@ esac
 export ZSH_DEBUG_INIT="${ZSH_DEBUG_INIT:-0}"
 
 # ZSH dotfile locations
-# Derive ZDOTDIR from this file's real path (resolves symlinks)
-export DOTDIR="${DOTDIR:-${HOME}/.dotfiles}"
-export MYCONF="${MYCONF:-${HOME}/.myconf}"
+# ZDOTDIR is derived from this file's real path (:A resolves symlinks, :h takes
+# the dir). It MUST be set here — zsh needs it to locate the environment/ files.
+# DOTDIR and MYCONF are set per-OS in environment/<os>.env.
 export ZDOTDIR="${ZDOTDIR:-${${(%):-%x}:A:h}}"
-export ZFUNCDIR="${ZFUNCDIR:-${ZDOTDIR}/autoload}"
 
 # Set path as array-unique-special (no duplicates)
 typeset -aU path
@@ -36,12 +35,8 @@ import() {
   shift                 # Remove the first argument from the positional parameters
 
   for arg in "${@}"; do
-    local file="${base_dir}/${arg}" # Construct the file path
-
-    # If base_dir is empty, it will result in just "/arg", but that works fine.
-    if [[ -n "${base_dir}" ]]; then
-      file="${base_dir}/${arg}"
-    fi
+    # Construct the file path; if base_dir is empty, use the bare arg
+    local file="${base_dir:+${base_dir}/}${arg}"
 
     (( ZSH_DEBUG_INIT )) && print "Attempting to load ${file}..."
 
