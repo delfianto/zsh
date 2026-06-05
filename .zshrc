@@ -142,3 +142,6 @@ fi
 
 unset -f autoload_init import
 unset zcompdump plugin_dir _zsh_start
+
+# bun completions
+[ -s "/Users/dwi.elfianto/.local/lib/bun/_bun" ] && source "/Users/dwi.elfianto/.local/lib/bun/_bun"
