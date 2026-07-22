@@ -1,0 +1,4 @@
+cmd_fixmirror() {
+  sudo cachyos-rate-mirrors
+  sudo pacman -Syu
+}

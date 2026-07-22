@@ -1,6 +1,3 @@
-# cmd_ex; extract various archive formats.
-# cmd_ex <file>
-
 cmd_ex() {
   # Check if the argument provided is a file and we can read it
   if [[ ! -f "$1" || ! -r "$1" ]]; then

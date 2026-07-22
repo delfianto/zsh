@@ -1,6 +1,3 @@
-# stderr; safely print arguments to standard error stream (wraps print -u2 --)
-# stderr [args...]
-
 stderr() {
   print -Pr -u2 -- "$@"
 }

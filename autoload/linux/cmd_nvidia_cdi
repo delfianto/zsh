@@ -1,0 +1,3 @@
+cmd_nvidia_cdi() {
+  nvidia-ctk cdi generate --output="/etc/cdi/nvidia.yaml"
+}
