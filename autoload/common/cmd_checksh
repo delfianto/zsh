@@ -53,6 +53,18 @@ cmd_checksh() {
     _resolve "$cmd"
   done
 
+  # cmd_* functions that could not claim their kebab-case name. Without this
+  # the alias just silently doesn't exist and the function is unreachable.
+  if (( ${#ZSH_ALIAS_SKIPPED} )); then
+    printf "\n${bold}${cyan}Unaliased Functions${reset}\n"
+    printf "${dim}─────────────────────────────────────${reset}\n"
+    local skipped
+    for skipped in "${ZSH_ALIAS_SKIPPED[@]}"; do
+      printf "  ${yellow}%s${reset}\n" "$skipped"
+    done
+    printf "  ${dim}add the name to %s to override${reset}\n" "${ZDOTDIR}/shadow_cmd"
+  fi
+
   # Enhanced tools — collect versions in parallel
   printf "\n${bold}${cyan}Modern CLI Tools${reset}\n"
   printf "${dim}─────────────────────────────────────${reset}\n"
