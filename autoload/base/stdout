@@ -1,3 +1,11 @@
+# Print to stdout. Escape sequences and prompt escapes are NOT expanded, so
+# arbitrary data (paths, command output, env values) is safe to pass through.
+# Pass -P as the first argument to opt into prompt expansion (%F, %~, ...).
 stdout() {
-  print -Pr -- "$@"
+  if [[ "$1" == '-P' ]]; then
+    shift
+    print -Pr -- "$@"
+  else
+    print -r -- "$@"
+  fi
 }
