@@ -4,6 +4,7 @@
 ~/.config/zsh/                    # ZDOTDIR — all zsh config lives here
 ├── .zshenv                       # Entry point: sourced for ALL shells (login, interactive, scripts)
 ├── .zshrc                        # Interactive shell config: options, keybindings, plugins, tool init
+├── shadow_cmd                    # cmd_* names allowed to shadow an existing command
 ├── mod.yml                       # Dotfile manager manifest (symlink rules)
 │
 ├── environment/                  # Environment variables, sourced early in .zshenv
@@ -52,7 +53,7 @@
 │       └── cmd_svc               # Homebrew services management
 │
 ├── docs/                         # Project documentation
-│   ├── README.md                 # Change log and fix tracker
+│   ├── README.md                 # Docs index
 │   ├── STRUCTURE.md              # This file
 │   └── ARCHITECTURE.md           # How the init system works
 │
