@@ -1,4 +1,17 @@
 # File .zshenv; zsh environment config
+#
+# Sourced for EVERY zsh invocation -- login, interactive, scripts, SSH commands.
+# Only things a non-interactive shell genuinely needs belong here. Anything that
+# only matters to a human at a prompt (history, ZLE, keybindings, prompt tools)
+# goes in .zshrc.
+
+# ZSH debug initialization. The timer starts here rather than in .zshrc so that
+# the reported figure covers the environment phase too; .zshrc prints the total.
+export ZSH_DEBUG_INIT="${ZSH_DEBUG_INIT:-0}"
+if (( ZSH_DEBUG_INIT )); then
+  zmodload zsh/datetime
+  typeset -g _zsh_init_start=$EPOCHREALTIME
+fi
 
 # Determine the OS name
 case "$OSTYPE" in
@@ -12,9 +25,6 @@ case "$OSTYPE" in
     export OSNAME="unknown"
     ;;
 esac
-
-# ZSH debug initialization
-export ZSH_DEBUG_INIT="${ZSH_DEBUG_INIT:-0}"
 
 # ZSH dotfile locations
 # ZDOTDIR is derived from this file's real path (:A resolves symlinks, :h takes
@@ -34,9 +44,10 @@ import() {
   local base_dir="${1}" # Base directory, can be "" for current dir, or "${ZDOTDIR}/files"
   shift                 # Remove the first argument from the positional parameters
 
+  local arg file
   for arg in "${@}"; do
     # Construct the file path; if base_dir is empty, use the bare arg
-    local file="${base_dir:+${base_dir}/}${arg}"
+    file="${base_dir:+${base_dir}/}${arg}"
 
     (( ZSH_DEBUG_INIT )) && print "Attempting to load ${file}..."
 
@@ -52,8 +63,9 @@ import() {
 # Initialize ZSH auto-loaded functions
 # We also unfunction this later in .zshrc
 autoload_init() {
+  local dir file autoload_dir
   for dir in "$@"; do
-    local autoload_dir="${ZDOTDIR}/autoload/${dir}"
+    autoload_dir="${ZDOTDIR}/autoload/${dir}"
 
     if [[ -d "${autoload_dir}" ]]; then
       fpath=("${autoload_dir}" $fpath)
@@ -77,18 +89,13 @@ import "${ZDOTDIR}/environment" \
   "devtools.env" \
   "local.env"
 
-# Don't record these patterns in history
-export HISTORY_IGNORE="(history*|rm *|cls*|exit*|pwd*|clear*)"
-export HISTFILE="${HISTFILE:-${ZDOTDIR}/.zsh_history}"
-export HISTTIMEFORMAT="%F %T "
-export HISTSIZE="50000"
-export SAVEHIST="50000"
-
 export VISUAL="nvim"
 export EDITOR="nano"
 
-# Try to use `ov` as default pager
-if (( $+commands[ov] )); then
+# Try to use `ov` as default pager.
+# Braces matter: inside (( )) an unbraced $+assoc[key] math-evaluates the
+# subscript, so a key that happens to name a variable expands to its value.
+if (( ${+commands[ov]} )); then
   export PAGER="ov"
   export BAT_PAGER="ov"
   export SYSTEMD_PAGER="ov"
@@ -96,11 +103,6 @@ else
   export PAGER="less"
   export SYSTEMD_PAGER="less"
 fi
-
-export ZLE_RPROMPT_INDENT=0               # don't leave an empty space after right prompt
-export ZLE_REMOVE_SUFFIX_CHARS=''         # don't eat space when typing '|' after a tab completion
-export READNULLCMD="${PAGER}"             # use the default pager instead of `more`
-export WORDCHARS="${WORDCHARS//\/[&.;]}"  # don't consider certain characters part of the word
 
 # Configure terminal pager
 # This affects every invocation of `less`.
@@ -112,17 +114,8 @@ export WORDCHARS="${WORDCHARS//\/[&.;]}"  # don't consider certain characters pa
 #   -x4  tabs are 4 instead of 8
 export LESS="-iRFXMx4"
 
-# Set man pages colors
-export LESS_TERMCAP_mb=$'\E[01;32m'
-export LESS_TERMCAP_md=$'\E[01;32m'
-export LESS_TERMCAP_me=$'\E[0m'
-export LESS_TERMCAP_se=$'\E[0m'
-export LESS_TERMCAP_so=$'\E[01;47;34m'
-export LESS_TERMCAP_ue=$'\E[0m'
-export LESS_TERMCAP_us=$'\E[01;36m'
-
-if (( $+commands[lesspipe] )); then
+if (( ${+commands[lesspipe]} )); then
   export LESSOPEN="| lesspipe %s 2>&-"
-elif (( $+commands[lesspipe.sh] )); then
+elif (( ${+commands[lesspipe.sh]} )); then
   export LESSOPEN="| lesspipe.sh %s 2>&-"
 fi

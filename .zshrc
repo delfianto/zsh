@@ -1,9 +1,29 @@
 # File .zshrc; zsh initialization script
+#
+# Interactive shells only. Environment that scripts also need lives in .zshenv.
+# Note: a sourced rc file is not a function scope, so `local` here would create
+# an ordinary global -- plain assignments are used instead, and cleaned up at
+# the bottom of this file.
 
-if (( ZSH_DEBUG_INIT )); then
-  zmodload zsh/datetime
-  local _zsh_start=$EPOCHREALTIME
-fi
+# History. Interactive-only: a non-interactive shell never reads or writes it.
+export HISTORY_IGNORE="(history*|rm *|cls*|exit*|pwd*|clear*)"
+export HISTFILE="${HISTFILE:-${ZDOTDIR}/.zsh_history}"
+export HISTSIZE="50000"
+export SAVEHIST="50000"
+
+export ZLE_RPROMPT_INDENT=0               # don't leave an empty space after right prompt
+export ZLE_REMOVE_SUFFIX_CHARS=''         # don't eat space when typing '|' after a tab completion
+export READNULLCMD="${PAGER}"             # use the default pager instead of `more`
+export WORDCHARS="${WORDCHARS//\/[&.;]}"  # don't consider certain characters part of the word
+
+# Set man pages colors
+export LESS_TERMCAP_mb=$'\E[01;32m'
+export LESS_TERMCAP_md=$'\E[01;32m'
+export LESS_TERMCAP_me=$'\E[0m'
+export LESS_TERMCAP_se=$'\E[0m'
+export LESS_TERMCAP_so=$'\E[01;47;34m'
+export LESS_TERMCAP_ue=$'\E[0m'
+export LESS_TERMCAP_us=$'\E[01;36m'
 
 autoload_init "common"
 autoload_init "devtools"
@@ -13,7 +33,7 @@ autoload_init "${OSNAME}"
 autoload -Uz colors compinit regexp-replace zcalc
 
 # Only regenerate completion dump once per day
-local zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
 if [[ -n ${zcompdump}(#qN.mh+24) ]]; then
   compinit -d "$zcompdump"
 else
@@ -115,15 +135,27 @@ if has_cmd -q zoxide; then
   eval "$(zoxide init zsh)"
 fi
 
+# Load direnv. This installs a precmd hook, which only ever fires at a prompt --
+# running it from .zshenv forked direnv for every non-interactive `zsh -c` too.
+if has_cmd -q direnv; then
+  eval "$(direnv hook zsh)"
+fi
+
 # Load starship
 if has_cmd -q starship; then
   eval "$(starship init zsh)"
 fi
 
+# Bun completions. $BUN_INSTALL is set by environment/devtools.env when the
+# install dir exists; the path used to be hardcoded to a macOS home directory.
+if [[ -n "$BUN_INSTALL" && -s "$BUN_INSTALL/_bun" ]]; then
+  source "$BUN_INSTALL/_bun"
+fi
+
 # Plugins: fish-style features. Sourced LAST, after every other ZLE widget
 # (fzf, zoxide, etc.) is defined — zsh-syntax-highlighting must wrap them all.
 # Internal order matters: autosuggestions -> syntax-highlighting -> history-substring-search.
-local plugin_dir=""
+plugin_dir=""
 case "$OSNAME" in
   linux)  plugin_dir="/usr/share/zsh/plugins" ;;
   macos)  plugin_dir="${HOMEBREW_PREFIX:-/opt/homebrew}/share" ;;
@@ -137,11 +169,9 @@ if [[ -n "$plugin_dir" ]]; then
 fi
 
 if (( ZSH_DEBUG_INIT )); then
-  printf "Shell initialization took %.3f milliseconds.\n" "$(( (EPOCHREALTIME - _zsh_start) * 1000 ))"
+  printf "Shell initialization took %.3f milliseconds (.zshenv + .zshrc).\n" \
+    "$(( (EPOCHREALTIME - _zsh_init_start) * 1000 ))"
 fi
 
 unset -f autoload_init import
-unset zcompdump plugin_dir _zsh_start
-
-# bun completions
-[ -s "/Users/dwi.elfianto/.local/lib/bun/_bun" ] && source "/Users/dwi.elfianto/.local/lib/bun/_bun"
+unset zcompdump plugin_dir _zsh_init_start
