@@ -1,40 +1,44 @@
 cmd_lsenv() {
-  typeset -A env_vars
-  local pattern="$1"
-
-  while IFS='=' read -r key val; do
-    env_vars[$key]="$val"
-  done < <(env)
-
+  # EXTENDED_GLOB is needed for the `#` repetition operator in the ANSI pattern.
+  # LC_COLLATE=C keeps the sort order stable regardless of the user's locale.
+  setopt LOCAL_OPTIONS EXTENDED_GLOB
   local LC_COLLATE=C
 
-  # Convert pattern to glob format if no wildcards present
+  local pattern="$1"
   local glob_pattern="$pattern"
+
+  # A bare word is treated as a substring match; anything with a `*` is used as-is.
   if [[ -n "$pattern" && "$pattern" != *\** ]]; then
     glob_pattern="*${pattern}*"
   fi
 
-  local found=0
+  # Matches a CSI escape sequence, e.g. $'\e[1;32m'.
+  local ansi_re=$'\e''\[[0-9;]#[a-zA-Z]'
 
-  for key in ${(@o)${(k)env_vars}}; do
-    # If pattern is set, filter with case-insensitive glob
-    if [[ -n "$pattern" ]] && [[ ${key} != (#i)${~glob_pattern} ]]; then
+  local key val found=0
+
+  # Walk $parameters rather than forking `env`: it keeps values with embedded
+  # newlines intact and avoids a subshell. The `export` flag in the attribute
+  # string is what makes a parameter part of the environment.
+  for key in ${(ko)parameters}; do
+    [[ ${parameters[$key]} == *export* ]] || continue
+
+    if [[ -n "$pattern" ]] && [[ $key != (#i)${~glob_pattern} ]]; then
       continue
     fi
 
     found=1
-    local val="${env_vars[$key]}"
+    val="${(P)key}"
 
     if [[ -z "$val" ]]; then
       printf '%s: [EMPTY]\n' "$key"
     else
-      # Strip ANSI escape codes inline
-      printf '%s: %s\n' "$key" "${val//\x1b\[[0-9;]#[a-zA-Z]/}"
+      printf '%s: %s\n' "$key" "${val//${~ansi_re}/}"
     fi
   done
 
   if [[ -n "$pattern" ]] && (( ! found )); then
-    echo "No environment variables match pattern: $pattern" >&2
+    stderr "No environment variables match pattern: $pattern"
     return 1
   fi
 }

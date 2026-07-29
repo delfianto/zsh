@@ -14,7 +14,7 @@ cmd_pkg() {
       if command -v cachy-update &> /dev/null; then
         cachy-update
       else
-        $HELPER -Syyu
+        $HELPER -Syu
       fi ;;
     'yup') $HELPER -Syu --noconfirm ;;
     'clean')
@@ -24,19 +24,17 @@ cmd_pkg() {
 
       $HELPER -Sc --noconfirm ;;
     'orphans')
-      # Get the list of orphans (Quiet mode)
-      local orphans=$($HELPER -Qdtq)
+      # Split on newlines into a real array. zsh does NOT word-split unquoted
+      # parameters, so a bare `$orphans` would pass the whole list as one argument.
+      local -a orphans=(${(f)"$($HELPER -Qdtq)"})
 
-      # Check if the list is empty to prevent errors
-      if [[ -z "$orphans" ]]; then
+      if (( ! ${#orphans} )); then
         echo "No unneeded dependencies (orphans) found."
       else
         echo "Found unneeded dependencies:"
-        echo "$orphans"
+        print -l -- "${orphans[@]}"
         echo "-----------------------------"
-        # Pass the list to the remove command
-        # $orphans is unquoted so the shell splits the list into arguments
-        $HELPER -Rns $orphans
+        $HELPER -Rns "${orphans[@]}"
       fi ;;
 
     # Package Management
