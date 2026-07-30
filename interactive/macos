@@ -28,7 +28,7 @@ if [[ -x "${HOMEBREW_PREFIX}/bin/brew" ]]; then
     local -a gnu_pkgs=(coreutils findutils gnu-indent gnu-which gnu-sed gnu-tar)
     for gnu in "${gnu_pkgs[@]}"; do
       local gnu_lib="${HOMEBREW_PREFIX}/opt/${gnu}/libexec"
-      [[ -d "${gnu_lib}/gnubin" ]] && path=("${gnu_lib}/gnubin" $path)
+      add_path "${gnu_lib}/gnubin"
     done
   fi
 fi

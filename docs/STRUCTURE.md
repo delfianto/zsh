@@ -7,6 +7,9 @@
 ├── shadow_cmd                    # cmd_* names allowed to shadow an existing command
 ├── mod.yml                       # Dotfile manager manifest (symlink rules)
 │
+├── .githooks/                    # Opt-in git hooks (not enabled by default)
+│   └── pre-commit                # zsh -n syntax check on staged files
+│
 ├── environment/                  # Environment variables, sourced early in .zshenv
 │   ├── linux.env                 # Linux: XDG dirs, ZDOTDIR, DOTDIR, LS_ARGS, Docker env
 │   ├── macos.env                 # macOS: ZDOTDIR, DOTDIR, Homebrew vars, LS_ARGS
@@ -30,6 +33,7 @@
 │   │   ├── cmd_ex                # Universal archive extractor
 │   │   ├── cmd_func              # List/check defined shell functions
 │   │   ├── cmd_jstatd            # Start Java jstatd with auto-generated policy
+│   │   ├── cmd_lint              # zsh -n syntax check across the whole repo
 │   │   ├── cmd_lsenv             # Search and display environment variables
 │   │   └── cmd_lspath            # Pretty-print PATH entries
 │   │
@@ -40,7 +44,9 @@
 │   │
 │   ├── linux/                    # Linux-only commands
 │   │   ├── cmd_cpufreq           # Monitor CPU frequency per core
+│   │   ├── cmd_fixmirror         # Rate CachyOS mirrors and full-upgrade
 │   │   ├── cmd_iommu             # IOMMU group inspector (PCI, USB)
+│   │   ├── cmd_nvidia_cdi        # Generate NVIDIA CDI spec for containers
 │   │   ├── cmd_os_release        # Parse /etc/os-release (shell or JSON output)
 │   │   ├── cmd_pkg               # Unified package manager wrapper (paru/yay/pacman)
 │   │   ├── cmd_pulse_eq          # EasyEffects preset switcher
@@ -69,6 +75,20 @@ Managed via `mod.yml`. The dotfile manager creates:
 
 Zsh then discovers the rest via `ZDOTDIR` which `.zshenv` derives from its own
 resolved path. No other symlinks are needed.
+
+## Linting
+
+`lint` runs `zsh -n` (syntax-only, no execution) over every file this repo
+sources or autoloads — catches quoting/glob/case-branch mistakes before they
+land in an interactive shell.
+
+A matching pre-commit hook lives at `.githooks/pre-commit` and runs the same
+check against staged files only. It's not enabled by default (git only reads
+hooks from `.git/hooks/`, which isn't tracked); opt in once per clone with:
+
+```sh
+git config core.hooksPath .githooks
+```
 
 ## Gitignored Files
 

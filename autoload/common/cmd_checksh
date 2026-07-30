@@ -1,13 +1,17 @@
 cmd_checksh() {
-  # Suppress job control notifications for background version checks
-  setopt LOCAL_OPTIONS NO_MONITOR NO_NOTIFY
+  # Suppress job control notifications for background version checks.
+  # LOCAL_TRAPS scopes the tmpdir cleanup trap below to this function instead
+  # of leaking an INT/TERM handler into the interactive shell.
+  setopt LOCAL_OPTIONS LOCAL_TRAPS NO_MONITOR NO_NOTIFY
 
-  local reset=$'\e[0m'
-  local bold=$'\e[1m'
+  # cyan/green/yellow come from the `colors` autoload already run in .zshrc;
+  # only "dim" has no equivalent there. Headers want bold cyan, which is
+  # exactly what $fg_bold[cyan] already is.
+  local reset="$reset_color"
   local dim=$'\e[2m'
-  local cyan=$'\e[36m'
-  local green=$'\e[32m'
-  local yellow=$'\e[33m'
+  local cyan="$fg_bold[cyan]"
+  local green="$fg[green]"
+  local yellow="$fg[yellow]"
 
   # Resolve what a command actually points to (alias → binary → not found)
   _resolve() {
@@ -23,7 +27,7 @@ cmd_checksh() {
   }
 
   # Header
-  printf "\n${bold}${cyan}Shell Environment${reset}\n"
+  printf "\n${cyan}Shell Environment${reset}\n"
   printf "${dim}─────────────────────────────────────${reset}\n"
   printf "  OS:        %s (%s)\n" "$OSNAME" "$OSTYPE"
   printf "  Shell:     zsh %s\n" "$ZSH_VERSION"
@@ -37,7 +41,7 @@ cmd_checksh() {
   fi
 
   # Prompt
-  printf "\n${bold}${cyan}Prompt${reset}\n"
+  printf "\n${cyan}Prompt${reset}\n"
   printf "${dim}─────────────────────────────────────${reset}\n"
   if (( $+commands[starship] )); then
     printf "  ${green}starship${reset}  %s\n" "$(starship --version 2>/dev/null | head -1)"
@@ -46,7 +50,7 @@ cmd_checksh() {
   fi
 
   # Core command replacements
-  printf "\n${bold}${cyan}Core Commands${reset}\n"
+  printf "\n${cyan}Core Commands${reset}\n"
   printf "${dim}─────────────────────────────────────${reset}\n"
   local -a core_cmds=(cat ls ll la lla df du grep find vi vim)
   for cmd in $core_cmds; do
@@ -56,7 +60,7 @@ cmd_checksh() {
   # cmd_* functions that could not claim their kebab-case name. Without this
   # the alias just silently doesn't exist and the function is unreachable.
   if (( ${#ZSH_ALIAS_SKIPPED} )); then
-    printf "\n${bold}${cyan}Unaliased Functions${reset}\n"
+    printf "\n${cyan}Unaliased Functions${reset}\n"
     printf "${dim}─────────────────────────────────────${reset}\n"
     local skipped
     for skipped in "${ZSH_ALIAS_SKIPPED[@]}"; do
@@ -66,7 +70,7 @@ cmd_checksh() {
   fi
 
   # Enhanced tools — collect versions in parallel
-  printf "\n${bold}${cyan}Modern CLI Tools${reset}\n"
+  printf "\n${cyan}Modern CLI Tools${reset}\n"
   printf "${dim}─────────────────────────────────────${reset}\n"
 
   # Ordered list: name|alternatives (comma-sep)|replaces
@@ -90,6 +94,10 @@ cmd_checksh() {
   # Grab all versions in parallel (dump full output, parse later)
   local tmpdir="${TMPDIR:-/tmp}/checksh.$$"
   mkdir -p "$tmpdir"
+  # Double-quoted so $tmpdir is baked in now: by the time an EXIT/INT/TERM
+  # trap fires, this function's locals are already gone, so a single-quoted
+  # (deferred) reference would expand to empty and silently skip the rm.
+  trap "rm -rf \"$tmpdir\"" EXIT INT TERM
 
   for entry in $tool_list; do
     local bins="${${entry#*|}%%|*}"
@@ -132,7 +140,6 @@ cmd_checksh() {
     fi
   done
 
-  rm -rf "$tmpdir"
   printf "\n"
   unfunction _resolve 2>/dev/null
 }

@@ -52,6 +52,12 @@ checksh
 
 Shows your current shell environment, what each core command actually resolves to, and which modern CLI tools are installed (with versions).
 
+```sh
+lint
+```
+
+Runs `zsh -n` over every sourced/autoloaded file in the repo. A matching pre-commit hook exists at `.githooks/pre-commit` — opt in with `git config core.hooksPath .githooks`.
+
 ## Platform Notes
 
 **Linux (Arch/CachyOS)** — The first-class citizen. Everything is tested here first. Package management is wrapped via `pkg` (paru/yay). This is the daily driver.

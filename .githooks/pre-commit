@@ -1,0 +1,28 @@
+#!/usr/bin/env zsh
+# Syntax-check staged shell fragments before commit.
+#
+# Not enabled by default -- git only looks in .git/hooks/, which isn't
+# tracked. Opt in once per clone with:
+#   git config core.hooksPath .githooks
+
+lint_staged() {
+  local -a files
+  files=(${(f)"$(git diff --cached --name-only --diff-filter=ACM)"})
+
+  local file failed=0
+  for file in "${files[@]}"; do
+    [[ -f "$file" ]] || continue
+    case "$file" in
+      *.md|*.yml|*.yaml|LICENSE|.gitignore) continue ;;
+    esac
+
+    if ! zsh -n "$file"; then
+      print -u2 "pre-commit: syntax error in $file"
+      failed=1
+    fi
+  done
+
+  return $failed
+}
+
+lint_staged

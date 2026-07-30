@@ -1,7 +1,12 @@
 cmd_pkg() {
   local HELPER="paru"
   # Fallback to yay if paru is missing
-  if ! command -v $HELPER &> /dev/null; then HELPER="yay"; fi
+  if ! has_cmd -q "$HELPER"; then HELPER="yay"; fi
+
+  if ! has_cmd -q "$HELPER"; then
+    stderr "Neither paru nor yay found in PATH."
+    return 1
+  fi
 
   if [[ -z "$1" ]]; then
       echo "Usage: pkg [install|remove|up|find|info|files|whose|ls|...]"
