@@ -56,6 +56,39 @@ sudo-conf '../invalid' >/dev/null 2>&1 &&
   fail "sudo-conf accepted path traversal"
 
 [[ "$(fpath .)" == "$PWD:A" ]] || fail "fpath returned the wrong path"
+if (( ${+commands[gcc]} )); then
+  typeset gcc_test_dir
+  gcc_test_dir="$(mktemp -d "${TMPDIR:-/tmp}/zsh-gcc-flags.XXXXXXXXXX")" ||
+    fail "could not create gcc-flags test directory"
+  if [[ -n "$gcc_test_dir" ]]; then
+    (cd "$gcc_test_dir" && gcc-flags >/dev/null) ||
+      fail "gcc-flags could not query target options"
+    [[ ! -e "$gcc_test_dir/help-dummy.o" ]] ||
+      fail "gcc-flags left help-dummy.o in the working directory"
+    rm -f -- "$gcc_test_dir/help-dummy.o"
+    rmdir -- "$gcc_test_dir"
+  fi
+fi
+iommu --help >/dev/null || fail "iommu Python utility could not start"
+pulse-eq --help >/dev/null || fail "pulse-eq Python utility could not start"
+venv --help >/dev/null || fail "venv Python utility could not start"
+
+typeset venv_test_dir
+venv_test_dir="$(mktemp -d "${TMPDIR:-/tmp}/zsh-venv-load.XXXXXXXXXX")" ||
+  fail "could not create venv load test directory"
+if [[ -n "$venv_test_dir" ]]; then
+  mkdir -p -- "$venv_test_dir/bin"
+  print -r -- "export VIRTUAL_ENV=${(q)venv_test_dir}" > "$venv_test_dir/bin/activate"
+  (venv load "$venv_test_dir" >/dev/null &&
+    [[ "$VIRTUAL_ENV" == "$venv_test_dir" ]]) ||
+    fail "venv load did not activate in the calling shell"
+  rm -f -- "$venv_test_dir/bin/activate"
+  rmdir -- "$venv_test_dir/bin" "$venv_test_dir"
+fi
+
+PYTHONPYCACHEPREFIX="$XDG_CACHE_HOME/zsh/python" \
+  python3 -m unittest discover -s "$repo/utils" -t "$repo" ||
+  fail "Python utility tests failed"
 
 if (( failures )); then
   print -u2 -r -- "$failures test(s) failed"

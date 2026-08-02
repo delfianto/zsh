@@ -25,5 +25,28 @@ lint() {
 
   print -r -- "lint: ${#files} files OK"
 
+  local python_cache="$XDG_CACHE_HOME/zsh/python"
+  local -a python_files=("${ZDOTDIR}"/**/*.py(N.))
+  if (( ${#python_files} )); then
+    if (( ! ${+commands[python3]} )); then
+      print -r -u2 -- "lint: python3 is required for Python utilities"
+      return 1
+    fi
+    local checker
+    for checker in ruff basedpyright; do
+      if (( ! ${+commands[$checker]} )); then
+        print -r -u2 -- "lint: $checker is required for Python checks"
+        return 1
+      fi
+    done
+    mkdir -p -- "$python_cache"
+    PYTHONPYCACHEPREFIX="$python_cache" \
+      command python3 -m py_compile "${python_files[@]}" || return
+    command ruff check "${python_files[@]}" || return
+    command ruff format --check "${python_files[@]}" || return
+    command basedpyright "${python_files[@]}" || return
+    print -r -- "lint: ${#python_files} Python files OK (Ruff + BasedPyright)"
+  fi
+
   ZDOTDIR="$ZDOTDIR" zsh -df "$ZDOTDIR/test.zsh"
 }

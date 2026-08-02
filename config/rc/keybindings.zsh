@@ -6,12 +6,14 @@ bindkey -e
 # advertised sequence when available.
 bindkey '^[[7~' beginning-of-line
 bindkey '^[[H' beginning-of-line
-[[ -n "${terminfo[khome]}" ]] && bindkey "${terminfo[khome]}" beginning-of-line
+[[ -n "${terminfo[khome]:-}" ]] &&
+  bindkey "${terminfo[khome]}" beginning-of-line
 
 # End: accept the equivalent common variants and the terminfo capability.
 bindkey '^[[8~' end-of-line
 bindkey '^[[F' end-of-line
-[[ -n "${terminfo[kend]}" ]] && bindkey "${terminfo[kend]}" end-of-line
+[[ -n "${terminfo[kend]:-}" ]] &&
+  bindkey "${terminfo[kend]}" end-of-line
 
 # Insert toggles overwrite mode; Delete removes the character under the cursor.
 bindkey '^[[2~' overwrite-mode

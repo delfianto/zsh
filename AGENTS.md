@@ -18,6 +18,12 @@ fast, and free of generated state inside the working tree.
   filename must exactly match the function it defines; hyphenated names are
   valid. Do not reintroduce `cmd_*`, generated aliases, or a shared base-helper
   tier.
+- `utils/` contains substantial external implementations used behind thin lazy
+  Zsh wrappers, plus their colocated tests. Keep Python utilities standard-library
+  only unless a dependency is explicitly justified.
+- Python CLI entry points in `utils/` are executable and called directly by
+  their lazy wrappers. Keep test modules non-executable; do not add a shared Zsh
+  dispatch helper merely to avoid repeating one path invocation.
 
 ## Invariants
 
@@ -47,8 +53,9 @@ ZDOTDIR="$PWD" zsh -df test.zsh
 ZDOTDIR="$PWD" zsh -d -i -c 'lint'
 ```
 
-`lint` syntax-checks every Zsh source file and then runs `test.zsh`. Add a
-regression assertion to `test.zsh` for behavioral fixes.
+`lint` syntax-checks every Zsh source file, byte-compiles every Python file,
+enforces Ruff formatting/lint and BasedPyright typing, then runs `test.zsh`.
+Add a regression assertion to `test.zsh` for behavioral fixes.
 
 The opt-in pre-commit hook uses the same checks:
 

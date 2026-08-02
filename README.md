@@ -110,6 +110,7 @@ the helpers afterward; they are scaffolding, not public shell commands.
 │   ├── devtools/           development helpers
 │   ├── linux/              Linux and machine-oriented helpers
 │   └── macos/              Homebrew helpers
+├── utils/                   external implementations and their unit tests
 ├── test.zsh                startup and behavior regression tests
 ├── .githooks/pre-commit    optional pre-commit check
 └── AGENTS.md               architecture and maintenance invariants
@@ -160,6 +161,12 @@ manifest. Useful additions include:
   `zsh-syntax-highlighting` installed beneath `/usr/share/zsh/plugins` on Linux
   or Homebrew's `share` directory on macOS;
 - SDKMAN, Bun, Vite+, and uv when those ecosystems are relevant to the host.
+- Python 3 for the stdlib-only `iommu`, `os-release`, and `pulse-eq`
+  implementations.
+
+Repository development additionally expects `ruff` and `basedpyright`; the
+`lint` command applies both to every Python file rather than trusting that type
+errors will become more charming with age.
 
 Individual utility functions have their own dependencies. For example, the
 Linux package wrapper expects `paru` or `yay`, `pulse-eq` expects EasyEffects,
@@ -185,10 +192,71 @@ Development commands:
   naming advice.
 - `gcc-flags` shows target flags enabled by the native GCC architecture.
 - `venv` manages Python virtual environments, dependencies, tests, and a
-  Uvicorn development server.
+  Uvicorn development server without demanding an activation ritual first.
+
+`venv` uses the selected environment's interpreter for every operation, so an
+ambient `pytest`, `pip`, or `uvicorn` cannot quietly wander in from another
+Python installation and pretend everything is fine. An explicit `--venv PATH`
+wins, followed by `$VIRTUAL_ENV`, then the local `.venv` default:
+
+```sh
+venv init [PATH]
+venv load [PATH]
+venv deps [--venv PATH] [--dev]
+venv check [--venv PATH]
+venv run [MODULE:APP] [--venv PATH] [--no-reload] [-- UVICORN_ARGS...]
+venv test [--venv PATH] [-- PYTEST_ARGS...]
+```
+
+Only `load` remains Zsh, because a child Python process cannot activate an
+environment in its parent shell no matter how inspirational its type hints are.
+The other commands live in `utils/venv_tool.py` and do not require activation.
+`deps --dev` understands both the traditional `dev` optional extra and the
+standardized `dependency-groups.dev` table, preferring `uv` when available and
+otherwise using the environment's own pip. `run` validates auto-detected Python
+module paths and prefers genuinely shallower `main.py` files rather than merely
+shorter-looking strings.
 
 Linux adds `cpufreq`, `fixmirror`, `iommu`, `nvidia-cdi`, `os-release`, `pkg`,
 `pulse-eq`, `sudo-conf`, and an `xdg-open` wrapper that prefers `handlr`.
+
+`iommu` keeps its public lazy Zsh wrapper but delegates the actual sysfs walking,
+PCI cleanup, and USB-controller mapping to `utils/iommu.py`. It preserves the
+short subcommand aliases and can also emit JSON when punctuation is not the
+desired interchange format:
+
+```sh
+iommu pci 0000:01:00.0
+iommu group
+iommu group --json
+iommu usb --json
+```
+
+The `os-release` command follows the same wrapper pattern. Its Python
+implementation uses `platform.freedesktop_os_release()` for specification-aware
+parsing and the stdlib JSON encoder for escaping and formatting, meaning neither
+handcrafted quote removal nor an optional `jq` séance is involved:
+
+    os-release
+    os-release --json
+
+EasyEffects 8 moved local presets from the application config directory to
+`$XDG_DATA_HOME/easyeffects/output`; the files under
+`$XDG_CONFIG_HOME/easyeffects/db` are Qt settings databases, not the portable
+preset library. `pulse-eq` follows the new layout, retains its interactive
+selector, and can inspect every PEQ band in the current JSON schema:
+
+    pulse-eq
+    pulse-eq list
+    pulse-eq load "Ananda Nano"
+    pulse-eq inspect "Ananda Nano"
+    pulse-eq inspect "Ananda Nano" --channel left
+    pulse-eq inspect "Ananda Nano" --json
+
+Inspection accepts a local preset name or an explicit JSON path. Loading accepts
+only a local preset name because EasyEffects' command-line interface loads from
+its own preset library. Set `EASYEFFECTS_PRESET_DIR` to override the detected
+directory for an unusual installation.
 
 macOS adds `beer` for Homebrew setup/removal, `pkg` as a small Homebrew command
 dispatcher, and `svc` for Homebrew services.
@@ -242,10 +310,12 @@ ZDOTDIR="$PWD" zsh -df test.zsh
 ZDOTDIR="$PWD" zsh -d -i -c 'lint'
 ```
 
-`lint` syntax-checks every Zsh source file and then executes `test.zsh`. The
-tests cover initialization cleanup, XDG state placement, prompt substitution,
-history filtering, opinionated aliases, public autoloads, and selected function
-behavior.
+`lint` syntax-checks every Zsh source file, byte-compiles Python utilities into
+the XDG cache, enforces Ruff lint/format checks and BasedPyright typing, and then
+executes `test.zsh`. The tests cover initialization cleanup, XDG state
+placement, prompt substitution, history filtering, opinionated aliases, public
+autoloads, selected function behavior, and the Python IOMMU, operating-system
+metadata, and EasyEffects preset models.
 
 The opt-in pre-commit hook runs the same behavioral test after checking staged
 shell files:
