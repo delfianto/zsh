@@ -161,7 +161,7 @@ manifest. Useful additions include:
   `zsh-syntax-highlighting` installed beneath `/usr/share/zsh/plugins` on Linux
   or Homebrew's `share` directory on macOS;
 - SDKMAN, Bun, Vite+, and uv when those ecosystems are relevant to the host.
-- Python 3 for the stdlib-only `iommu`, `os-release`, and `pulse-eq`
+- Python 3 for the stdlib-only `cpuinfo`, `iommu`, `os-release`, and `pulse-eq`
   implementations.
 
 Repository development additionally expects `ruff` and `basedpyright`; the
@@ -217,8 +217,26 @@ otherwise using the environment's own pip. `run` validates auto-detected Python
 module paths and prefers genuinely shallower `main.py` files rather than merely
 shorter-looking strings.
 
-Linux adds `cpufreq`, `fixmirror`, `iommu`, `nvidia-cdi`, `os-release`, `pkg`,
+Linux adds `cpuinfo`, `fixmirror`, `iommu`, `nvidia-cdi`, `os-release`, `pkg`,
 `pulse-eq`, `sudo-conf`, and an `xdg-open` wrapper that prefers `handlr`.
+
+`cpuinfo` replaces the former `watch | grep | awk | column` frequency matryoshka
+with one stdlib Python utility that understands Linux CPU lists, topology,
+cpufreq policies, cache metadata, and `/proc/cpuinfo` fallbacks. The default is
+a useful summary; the detailed and live views remain available when watching
+thirty-two numbers bounce around is the evening's chosen entertainment:
+
+```sh
+cpuinfo
+cpuinfo frequency
+cpuinfo frequency --json
+cpuinfo watch
+cpuinfo watch --interval 0.5
+```
+
+JSON includes the complete per-processor topology and numeric frequency data,
+which is rather more reusable than scraping a table produced by three unrelated
+Unix commands wearing a trench coat.
 
 `iommu` keeps its public lazy Zsh wrapper but delegates the actual sysfs walking,
 PCI cleanup, and USB-controller mapping to `utils/iommu.py`. It preserves the
@@ -315,7 +333,7 @@ the XDG cache, enforces Ruff lint/format checks and BasedPyright typing, and the
 executes `test.zsh`. The tests cover initialization cleanup, XDG state
 placement, prompt substitution, history filtering, opinionated aliases, public
 autoloads, selected function behavior, and the Python IOMMU, operating-system
-metadata, and EasyEffects preset models.
+metadata, CPU topology/frequency data, and EasyEffects preset models.
 
 The opt-in pre-commit hook runs the same behavioral test after checking staged
 shell files:

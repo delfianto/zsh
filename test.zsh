@@ -40,11 +40,12 @@ done
 (( ! ${+commands[eza]} || ${+aliases[ls]} )) || fail "eza did not replace ls"
 
 for name in checksh ex func jstatd lint lsenv lspath fpath gcc-flags venv \
-  cpufreq fixmirror iommu nvidia-cdi os-release pkg pulse-eq sudo-conf xdg-open; do
+  cpuinfo fixmirror iommu nvidia-cdi os-release pkg pulse-eq sudo-conf xdg-open; do
   (( ${+functions[$name]} )) || fail "public function is not autoloaded: $name"
 done
 typeset -a legacy_functions=(${(k)functions[(I)cmd_*]})
 (( ${#legacy_functions} )) && fail "legacy cmd_* functions remain"
+(( ${+functions[cpufreq]} )) && fail "retired cpufreq function remains autoloaded"
 
 unset key i
 os-release --shell >/dev/null
@@ -69,6 +70,7 @@ if (( ${+commands[gcc]} )); then
     rmdir -- "$gcc_test_dir"
   fi
 fi
+cpuinfo --help >/dev/null || fail "cpuinfo Python utility could not start"
 iommu --help >/dev/null || fail "iommu Python utility could not start"
 pulse-eq --help >/dev/null || fail "pulse-eq Python utility could not start"
 venv --help >/dev/null || fail "venv Python utility could not start"
