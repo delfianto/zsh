@@ -1,0 +1,9 @@
+nvidia-cdi() {
+  if (( ! ${+commands[nvidia-ctk]} )); then
+    print -r -u2 -- "nvidia-ctk is not installed."
+    return 1
+  fi
+
+  sudo mkdir -p /etc/cdi || return
+  sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+}

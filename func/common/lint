@@ -1,0 +1,29 @@
+lint() {
+  # Syntax-check every shell fragment this repo sources or autoloads. Catches
+  # the class of bug this repo has hit before (bad quoting, glob ordering,
+  # mismatched case branches) before it lands in an interactive shell.
+  local -a files=(
+    "${ZDOTDIR}/.zshenv"
+    "${ZDOTDIR}/.zshrc"
+    "${ZDOTDIR}/test.zsh"
+    "${ZDOTDIR}"/config/**/*.zsh(N.)
+    "${ZDOTDIR}"/func/**/*(N.)
+  )
+
+  local file failed=0
+  for file in "${files[@]}"; do
+    if ! zsh -n "$file"; then
+      print -r -u2 -- "Syntax error in: ${file#${ZDOTDIR}/}"
+      failed=1
+    fi
+  done
+
+  if (( failed )); then
+    print -r -u2 -- "lint: failed"
+    return 1
+  fi
+
+  print -r -- "lint: ${#files} files OK"
+
+  ZDOTDIR="$ZDOTDIR" zsh -df "$ZDOTDIR/test.zsh"
+}

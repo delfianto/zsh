@@ -1,177 +1,26 @@
-# File .zshrc; zsh initialization script
-#
-# Interactive shells only. Environment that scripts also need lives in .zshenv.
-# Note: a sourced rc file is not a function scope, so `local` here would create
-# an ordinary global -- plain assignments are used instead, and cleaned up at
-# the bottom of this file.
+# Interactive-shell entry point. The source order is intentional and mirrors
+# the phases documented in AGENTS.md.
 
-# History. Interactive-only: a non-interactive shell never reads or writes it.
-export HISTORY_IGNORE="(history*|rm *|cls*|exit*|pwd*|clear*)"
-export HISTFILE="${HISTFILE:-${ZDOTDIR}/.zsh_history}"
-export HISTSIZE="50000"
-export SAVEHIST="50000"
+source "$ZDOTDIR/config/bootstrap.zsh"
 
-export ZLE_RPROMPT_INDENT=0               # don't leave an empty space after right prompt
-export ZLE_REMOVE_SUFFIX_CHARS=''         # don't eat space when typing '|' after a tab completion
-export READNULLCMD="${PAGER}"             # use the default pager instead of `more`
-export WORDCHARS="${WORDCHARS//\/[&.;]}"  # don't consider certain characters part of the word
-
-# Set man pages colors
-export LESS_TERMCAP_mb=$'\E[01;32m'
-export LESS_TERMCAP_md=$'\E[01;32m'
-export LESS_TERMCAP_me=$'\E[0m'
-export LESS_TERMCAP_se=$'\E[0m'
-export LESS_TERMCAP_so=$'\E[01;47;34m'
-export LESS_TERMCAP_ue=$'\E[0m'
-export LESS_TERMCAP_us=$'\E[01;36m'
-
-autoload_init "common"
-autoload_init "devtools"
-autoload_init "${OSNAME}"
-
-# Initialize zsh built-in functions
-autoload -Uz colors compinit regexp-replace zcalc
-
-# Only regenerate completion dump once per day
-zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
-if [[ -n ${zcompdump}(#qN.mh+24) ]]; then
-  compinit -d "$zcompdump"
-else
-  compinit -C -d "$zcompdump"
-fi
-
+_zsh_autoload_dir common devtools "$OSNAME"
+autoload -Uz add-zsh-hook colors regexp-replace zcalc
 colors
 
-# On every prompt, set terminal title to "user@host: cwd"
-function set-term-title() { print -Pn '\e]0;%n@%m: %~\a' }
-autoload -U add-zsh-hook
-add-zsh-hook precmd set-term-title
-
-# Disable highlighting of text pasted into the command line
-zle_highlight=('paste:none')
-
-# ZSH options
-setopt ALWAYS_TO_END          # full completions move cursor to the end
-setopt AUTO_CD                # `dirname` is equivalent to `cd dirname`
-setopt AUTO_PUSHD             # `cd` pushes directories to the directory stack
-setopt CORRECT                # auto correct mistakes
-setopt EXTENDED_GLOB          # (#qx) glob qualifier and more
-setopt EXTENDED_HISTORY       # write timestamps to history
-setopt GLOB_DOTS              # glob matches files starting with dot; `*` becomes `*(D)`
-setopt HIST_EXPIRE_DUPS_FIRST # if history needs to be trimmed, evict dups first
-setopt HIST_FCNTL_LOCK        # lock history file using the system’s fcntl call
-setopt HIST_IGNORE_ALL_DUPS   # don't add dups to history
-setopt HIST_IGNORE_SPACE      # don't add commands starting with space to history
-setopt HIST_REDUCE_BLANKS     # remove junk whitespace from commands before adding to history
-setopt HIST_VERIFY            # if a cmd triggers history expansion, show it instead of running
-setopt INTERACTIVE_COMMENTS   # allow comments in command line
-setopt MULTIOS                # allow multiple redirections for the same fd
-setopt NO_BANG_HIST           # disable old history syntax
-setopt NO_BEEP                # no beep
-setopt NO_BG_NICE             # don't nice background jobs; not useful and doesn't work on WSL
-setopt NO_CASE_GLOB           # case insensitive globbing
-setopt NO_CHECK_JOBS          # don't warn about running processes when exiting
-setopt NUMERIC_GLOB_SORT      # sort filenames numerically when it makes sense
-setopt PUSHD_IGNORE_DUPS      # don’t push copies of the same directory onto the directory stack
-setopt PUSHD_MINUS            # `cd -3` now means "3 directory deeper in the stack"
-setopt RCEXPANDPARAM          # array expension with parameters
-setopt SHARE_HISTORY          # write and import history on every command
-
-# The following lines were added by compinstall
-zstyle ':completion:*' completer _expand _complete _ignored _correct _approximate
-zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'       # Case insensitive tab completion
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"         # Colored completion (different colors for dirs/files/etc)
-zstyle ':completion:*' rehash true                              # automatically find new executables in path
-
-# Speed up completions
-zstyle ':completion:*' accept-exact '*(N)'
-zstyle ':completion:*' use-cache on
-zstyle ':completion:*' cache-path ${ZDOTDIR}/cache
-
-# Keybindings
-bindkey -e
-bindkey '^[[7~' beginning-of-line                               # Home key
-bindkey '^[[H' beginning-of-line                                # Home key
-
-if [[ "${terminfo[khome]}" != "" ]]; then
-  bindkey "${terminfo[khome]}" beginning-of-line                # [Home] - Go to beginning of line
-fi
-
-bindkey '^[[8~' end-of-line                                     # End key
-bindkey '^[[F' end-of-line                                      # End key
-
-if [[ "${terminfo[kend]}" != "" ]]; then
-  bindkey "${terminfo[kend]}" end-of-line                       # [End] - Go to end of line
-fi
-
-bindkey '^[[2~' overwrite-mode                                  # Insert key
-bindkey '^[[3~' delete-char                                     # Delete key
-bindkey '^[[C'  forward-char                                    # Right key
-bindkey '^[[D'  backward-char                                   # Left key
-bindkey '^[[5~' history-beginning-search-backward               # Page up key
-bindkey '^[[6~' history-beginning-search-forward                # Page down key
-
-# Navigate words with ctrl+arrow keys
-bindkey '^[Oc' forward-word                                     #
-bindkey '^[Od' backward-word                                    #
-bindkey '^[[1;5D' backward-word                                 #
-bindkey '^[[1;5C' forward-word                                  #
-bindkey '^H' backward-kill-word                                 # delete previous word with ctrl+backspace
-bindkey '^[[Z' undo                                             # Shift+tab undo last action
-
-# Load the interactive init files (OS first to set up PATH, then common for aliases)
-import "${ZDOTDIR}/interactive" "${OSNAME}" "common"
-
-# Rehash command table after interactive init may have modified PATH (e.g. brew shellenv)
-hash -r
-
-# Load FZF
-if has_cmd -q fzf; then
-  source <(fzf --zsh)
-fi
-
-# Load zoxide (smart cd replacement)
-if has_cmd -q zoxide; then
-  eval "$(zoxide init zsh)"
-fi
-
-# Load direnv. This installs a precmd hook, which only ever fires at a prompt --
-# running it from .zshenv forked direnv for every non-interactive `zsh -c` too.
-if has_cmd -q direnv; then
-  eval "$(direnv hook zsh)"
-fi
-
-# Load starship
-if has_cmd -q starship; then
-  eval "$(starship init zsh)"
-fi
-
-# Bun completions. $BUN_INSTALL is set by environment/devtools.env when the
-# install dir exists; the path used to be hardcoded to a macOS home directory.
-if [[ -n "$BUN_INSTALL" && -s "$BUN_INSTALL/_bun" ]]; then
-  source "$BUN_INSTALL/_bun"
-fi
-
-# Plugins: fish-style features. Sourced LAST, after every other ZLE widget
-# (fzf, zoxide, etc.) is defined — zsh-syntax-highlighting must wrap them all.
-# Internal order matters: autosuggestions -> syntax-highlighting -> history-substring-search.
-plugin_dir=""
-case "$OSNAME" in
-  linux)  plugin_dir="/usr/share/zsh/plugins" ;;
-  macos)  plugin_dir="${HOMEBREW_PREFIX:-/opt/homebrew}/share" ;;
-esac
-
-if [[ -n "$plugin_dir" ]]; then
-  import "$plugin_dir" \
-    zsh-autosuggestions/zsh-autosuggestions.zsh \
-    zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
-    zsh-history-substring-search/zsh-history-substring-search.zsh
-fi
+_zsh_source \
+  "$ZDOTDIR/config/rc/options.zsh" \
+  "$ZDOTDIR/config/rc/history.zsh" \
+  "$ZDOTDIR/config/rc/completion.zsh" \
+  "$ZDOTDIR/config/rc/aliases.zsh" \
+  "$ZDOTDIR/config/rc/${OSNAME}.zsh" \
+  "$ZDOTDIR/config/rc/keybindings.zsh" \
+  "$ZDOTDIR/config/rc/tools.zsh" \
+  "$ZDOTDIR/config/rc/plugins.zsh"
 
 if (( ZSH_DEBUG_INIT )); then
   printf "Shell initialization took %.3f milliseconds (.zshenv + .zshrc).\n" \
     "$(( (EPOCHREALTIME - _zsh_init_start) * 1000 ))"
 fi
 
-unset -f autoload_init import
-unset zcompdump plugin_dir _zsh_init_start
+unfunction _zsh_source _zsh_autoload_dir _zsh_add_path
+unset _zsh_init_start

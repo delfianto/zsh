@@ -1,0 +1,116 @@
+pkg() {
+  local HELPER="paru"
+  # Fallback to yay if paru is missing
+  if [[ -z "${commands[$HELPER]}" ]]; then HELPER="yay"; fi
+
+  if [[ -z "${commands[$HELPER]}" ]]; then
+    print -r -u2 -- "Neither paru nor yay found in PATH."
+    return 1
+  fi
+
+  if [[ -z "$1" ]]; then
+      echo "Usage: pkg [install|remove|up|clean|orphans|foreign|find|info|files|whose|ls|...]"
+      return 1
+  fi
+
+  case "$1" in
+    # System Maintenance
+    'up'|'upgrade')
+      if command -v cachy-update &> /dev/null; then
+        cachy-update
+      else
+        $HELPER -Syu
+      fi ;;
+    'yup') $HELPER -Syu --noconfirm ;;
+    'clean')
+      find /var/cache/pacman/pkg/ \
+        -maxdepth 1 -type d -name "download-*" \
+        -exec sudo rmdir --ignore-fail-on-non-empty {} +
+
+      if [[ "$HELPER" == "paru" ]]; then
+        # --delete removes stale clone directories instead of merely cleaning
+        # their untracked build files. KeepInstalled protects active clones.
+        $HELPER -Scd --noconfirm
+      else
+        $HELPER -Sc --noconfirm
+      fi ;;
+    'orphans')
+      # Split on newlines into a real array. zsh does NOT word-split unquoted
+      # parameters, so a bare `$orphans` would pass the whole list as one argument.
+      local -a orphans=(${(f)"$($HELPER -Qdtq)"})
+
+      if (( ! ${#orphans} )); then
+        echo "No unneeded dependencies (orphans) found."
+      else
+        echo "Found unneeded dependencies:"
+        print -l -- "${orphans[@]}"
+        echo "-----------------------------"
+        $HELPER -Rns "${orphans[@]}"
+      fi ;;
+
+    # Package Management
+    'in'|'install')
+      if [[ -f "${2}" ]]; then
+        echo "Reading package list from: ${2}..."
+        # Grabs the first column, ignoring comments (#) and empty lines
+        local pkgs=($(awk '/^[[:alnum:]]/ {print $1}' "${2}"))
+
+        if [[ ${#pkgs[@]} -eq 0 ]]; then
+          echo "Error: No valid package names found in ${2}."
+          return 1
+        fi
+
+        echo "Installing ${#pkgs[@]} packages..."
+        $HELPER -S --needed "${pkgs[@]}"
+      else
+        $HELPER -S "${@:2}"
+      fi ;;
+    'rm'|'remove')
+      $HELPER -Rns "${@:2}" || return
+
+      # Paru does not remove its PKGBUILD clone on -R. Prune clone directories
+      # that no longer provide an installed package, without touching pacman's
+      # package cache. This also handles split packages by reading .SRCINFO.
+      if [[ "$HELPER" == "paru" ]]; then
+        $HELPER -Scd --aur --noconfirm
+      fi ;;
+
+    # Search & Query
+
+    # ls/list: Lists installed packages.
+    # If a generic term is provided (e.g., 'pkg ls fire'), matches partial names/descriptions.
+    'ls'|'list') $HELPER -Qs "${@:2}" ;;
+
+    # Packages absent from every configured sync database (AUR, manually
+    # installed packages, and packages dropped from a repository).
+    'foreign') $HELPER -Qm "${@:2}" ;;
+
+    # find: Search remote repositories (AUR/Official)
+    'find') $HELPER -Ss "${@:2}" ;;
+
+    # info: Get package information (Sync DB info)
+    'info') $HELPER -Qi "${@:2}" ;;
+
+    # files: List files owned by a specific INSTALLED package
+    'files') $HELPER -Ql "${@:2}" ;;
+
+    # whose: Check which package owns a specific file or command
+    'whose')
+      local target="${2}"
+      # If target is not a file on disk, check if it is a command in PATH
+      if [[ ! -e "$target" ]] && command -v "$target" &> /dev/null; then
+        target=$(command -v "$target")
+        echo "Resolved '${2}' to '${target}'"
+      fi
+      $HELPER -Qo "$target" ;;
+
+    # Utils
+    'deps') pactree -d 1 "${@:2}" ;;
+    'logs') tail -n 50 /var/log/pacman.log ;;
+    'build') makepkg -sc ;;
+    'check') $HELPER "${@:2}" ;;
+
+    # Catch-all
+    *) $HELPER "${@:1}" ;;
+  esac
+}

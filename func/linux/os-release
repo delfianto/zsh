@@ -1,0 +1,44 @@
+os-release() {
+  emulate -L zsh
+  typeset -A os_info
+
+  # Parse /etc/os-release and store in an associative array
+  local key value escaped separator
+  while IFS='=' read -r key value; do
+    [[ "$key" == [A-Z0-9_]## ]] || continue
+    os_info[${key:l}]="${(Q)value}"
+  done < /etc/os-release
+
+  local format="${1:---shell}"
+
+  case "${format}" in
+    '-s' | '--shell' | shell)
+      # Output in shell-friendly format
+      for key in ${(ok)os_info}; do
+        print -r -- "${key}: ${os_info[$key]}"
+      done
+      ;;
+    '-j' | '--json' | json)
+      # Output in JSON format
+      local json="{"
+      separator=""
+      for key in ${(ok)os_info}; do
+        escaped="${os_info[$key]//\\/\\\\}"
+        escaped="${escaped//\"/\\\"}"
+        json+="${separator}\"${key}\": \"${escaped}\""
+        separator=","
+      done
+      json+="}"
+
+      if (( ${+commands[jq]} )); then
+        print -r -- "${json}" | jq .
+      else
+        print -r -- "${json}"
+      fi
+      ;;
+    *)
+      print -r -u2 -- "Invalid output format '${format}'. Use 'json' or 'shell'."
+      return 1
+      ;;
+  esac
+}

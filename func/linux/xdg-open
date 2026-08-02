@@ -1,0 +1,7 @@
+xdg-open() {
+  if (( ${+commands[handlr]} )); then
+    handlr open "$@"
+  else
+    command xdg-open "$@"
+  fi
+}

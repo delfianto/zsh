@@ -1,0 +1,5 @@
+gcc-flags() {
+  if (( ${+commands[gcc]} )); then
+    gcc -c -Q -march=native --help=target
+  fi
+}

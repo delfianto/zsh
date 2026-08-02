@@ -1,0 +1,64 @@
+ex() {
+  emulate -L zsh
+
+  # Check if the argument provided is a file and we can read it
+  if [[ ! -f "$1" || ! -r "$1" ]]; then
+    print -r -u2 -- "Error: '${1}' is not a valid or readable file."
+    return 1
+  fi
+
+  # Compound extensions MUST come before their single-extension suffixes:
+  # zsh takes the first matching branch, so a bare *.gz listed above *.tar.gz
+  # would gunzip a tarball instead of unpacking it.
+  case "$1" in
+    *.tar.bz2|*.tbz2) tar xjf "$1" ;;
+    *.tar.gz|*.tgz)   tar xzf "$1" ;;
+    *.tar.xz|*.txz)   tar xJf "$1" ;;
+    *.tar.zst|*.tzst) tar --zstd -xf "$1" ;;
+    *.tar.lzma)       tar --lzma -xf "$1" ;;
+    *.tar)            tar xf "$1" ;;
+    *.7z)             7z x "$1" ;;
+    *.bz2)            bunzip2 "$1" ;;
+    *.cpio)           cpio -idv < "$1" ;;
+    *.deb)
+      if (( ${+commands[dpkg-deb]} )); then
+        dpkg-deb --extract "$1" .
+      else
+        local archive="${1:A}" tmpdir
+        tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/zsh-ex.XXXXXXXXXX")" || {
+          print -r -u2 -- "Error: Could not create a temporary extraction directory."
+          return 1
+        }
+
+        if ! (cd "$tmpdir" && ar x "$archive"); then
+          rm -rf -- "$tmpdir"
+          print -r -u2 -- "Error: Could not read deb archive."
+          return 1
+        fi
+
+        local -a data_tar=("$tmpdir"/data.tar.*(N.))
+        if (( ! ${#data_tar} )); then
+          rm -rf -- "$tmpdir"
+          print -r -u2 -- "Error: No data.tar.* found in deb archive."
+          return 1
+        fi
+
+        tar xf "${data_tar[1]}"
+        local status=$?
+        rm -rf -- "$tmpdir"
+        return $status
+      fi
+      ;;
+    *.gz)             gunzip "$1" ;;
+    *.lzma)           unlzma "$1" ;;
+    *.rar)            unrar x "$1" ;;
+    *.xz)             unxz "$1" ;;
+    *.zst)            unzstd "$1" ;;
+    *.Z)              uncompress "$1" ;;
+    *.zip)            unzip "$1" ;;
+    *)
+      print -r -u2 -- "Error: '${1}' cannot be extracted via ex()."
+      return 1
+      ;;
+  esac
+}

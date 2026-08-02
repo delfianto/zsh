@@ -13,7 +13,8 @@ lint_staged() {
   for file in "${files[@]}"; do
     [[ -f "$file" ]] || continue
     case "$file" in
-      *.md|*.yml|*.yaml|LICENSE|.gitignore) continue ;;
+      .zshenv|.zshrc|*.zsh|func/*) ;;
+      *) continue ;;
     esac
 
     if ! zsh -n "$file"; then
@@ -22,7 +23,8 @@ lint_staged() {
     fi
   done
 
-  return $failed
+  (( failed )) && return 1
+  zsh -df test.zsh
 }
 
 lint_staged

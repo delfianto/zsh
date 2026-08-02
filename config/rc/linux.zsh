@@ -1,0 +1,7 @@
+alias hdmon='sudo hdsentinel'
+alias hwmon='watch -n1 sensors'
+alias usbdev='lsusb -tv'
+alias pcidev='lspci -tv'
+alias dmesg='sudo dmesg -H'
+alias dracut='sudo dracut'
+alias pacman='sudo pacman'

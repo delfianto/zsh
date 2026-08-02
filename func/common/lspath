@@ -1,0 +1,7 @@
+lspath() {
+  local -a parts=(${(s/:/)PATH})
+  local i
+  for i in $parts; do
+    print -r -- "❯ $i"
+  done
+}

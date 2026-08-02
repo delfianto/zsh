@@ -1,7 +1,0 @@
-cmd_nvidia_cdi() {
-  if ! has_cmd nvidia-ctk; then
-    return 1
-  fi
-
-  nvidia-ctk cdi generate --output="/etc/cdi/nvidia.yaml"
-}

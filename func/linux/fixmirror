@@ -1,0 +1,9 @@
+fixmirror() {
+  if (( ! ${+commands[cachyos-rate-mirrors]} )); then
+    print -r -u2 -- "cachyos-rate-mirrors is not installed."
+    return 1
+  fi
+
+  sudo cachyos-rate-mirrors || return
+  sudo pacman -Syu
+}

@@ -1,0 +1,13 @@
+fpath() {
+  emulate -L zsh
+
+  if (( ! $# )); then
+    print -r -u2 -- "Usage: fpath PATH [...]"
+    return 1
+  fi
+
+  local arg
+  for arg in "$@"; do
+    print -r -- "${arg:A}"
+  done
+}

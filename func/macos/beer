@@ -1,0 +1,34 @@
+beer() {
+  emulate -L zsh
+  local src='https://raw.githubusercontent.com/Homebrew/install/HEAD'
+  local script
+
+  case "$1" in
+    'setup')
+      if (( ${+commands[brew]} )); then
+        echo 'Homebrew is already installed'
+        return 1
+      fi
+
+      script="$(mktemp "${TMPDIR:-/tmp}/homebrew-install.XXXXXXXXXX")" || return
+      curl -fsSLo "$script" "$src/install.sh" && /bin/bash "$script"
+      local status=$?
+      rm -f -- "$script"
+      return $status
+      ;;
+    'purge')
+      script="$(mktemp "${TMPDIR:-/tmp}/homebrew-uninstall.XXXXXXXXXX")" || return
+      curl -fsSLo "$script" "$src/uninstall.sh" && /bin/bash "$script"
+      local status=$?
+      rm -f -- "$script"
+      return $status
+      ;;
+    'chown')
+      print -r -u2 -- "The broad Homebrew chown operation was removed; run 'brew doctor' instead."
+      return 1
+      ;;
+    *)
+      echo "Usage: ${funcstack[1]} [ setup | purge ]"
+      ;;
+  esac
+}

@@ -1,0 +1,22 @@
+func() {
+  case "$1" in
+    '-l' | 'list')
+      print -l ${(ok)functions}
+      ;;
+    '-c' | 'check')
+      typeset -f "$2" > /dev/null
+      (( $? == 0 )) && print -r -- 'true' || print -r -- 'false'
+      ;;
+    '-h' | 'help')
+      print -r -- "Usage: func [OPTIONS]"
+      print -r -- "Running without any option will trigger check operation"
+      print -r -- ""
+      print -r -- "  -l, list   list all defined functions"
+      print -r -- "  -c, check  check whether the given name is a valid function, return true or false"
+      print -r -- "  -h, help   show help message"
+      ;;
+    *)
+      "${funcstack[1]}" help
+      ;;
+  esac
+}

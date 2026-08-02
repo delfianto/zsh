@@ -1,5 +1,0 @@
-cmd_gcc_flags() {
-  if has_cmd gcc; then
-    gcc -c -Q -march=native --help=target
-  fi
-}

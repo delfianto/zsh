@@ -1,0 +1,11 @@
+sudo-conf() {
+  if [[ -z "$1" ]]; then
+    sudo visudo
+  else
+    if [[ "$1" != [A-Za-z0-9_-]## ]]; then
+      print -r -u2 -- "Invalid sudoers name: use only letters, numbers, underscores, and hyphens."
+      return 1
+    fi
+    sudo visudo -f "/etc/sudoers.d/$1"
+  fi
+}

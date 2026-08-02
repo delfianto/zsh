@@ -1,8 +1,0 @@
-cmd_fixmirror() {
-  if ! has_cmd cachyos-rate-mirrors; then
-    return 1
-  fi
-
-  sudo cachyos-rate-mirrors
-  sudo pacman -Syu
-}
