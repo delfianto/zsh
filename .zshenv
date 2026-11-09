@@ -28,3 +28,6 @@ _zsh_source \
   "$ZDOTDIR/config/env/tools.zsh"
 
 unfunction _zsh_source _zsh_autoload_dir _zsh_add_path
+
+# Vite+ bin (https://viteplus.dev)
+. "/home/geist/.vite-plus/env"

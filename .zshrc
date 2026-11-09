@@ -24,3 +24,6 @@ fi
 
 unfunction _zsh_source _zsh_autoload_dir _zsh_add_path
 unset _zsh_init_start
+
+# Vite+ bin (https://viteplus.dev)
+. "/home/geist/.vite-plus/env"
