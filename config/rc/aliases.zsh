@@ -62,3 +62,9 @@ alias fgrep='fgrep -i --color=auto'
 alias history='fc -li'
 alias shdir='cd -- $ZDOTDIR'
 alias reload='exec zsh -l'
+
+if (( ${+commands[btop]} )); then
+  alias btop-cpu='btop -c ~/.config/btop/btop-cpu.conf'
+  alias btop-io='btop -c ~/.config/btop/btop-io-net.conf'
+  alias btop-gpu='btop -c ~/.config/btop/btop-gpu.conf'
+fi
