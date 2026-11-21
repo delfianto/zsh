@@ -7,7 +7,7 @@ _zsh_init_tools() {
     source "$SDKMAN_DIR/bin/sdkman-init.sh"
   fi
 
-  if [[ -s "$HOME/.vite-plus/env" ]]; then
+  if [[ -r "$HOME/.vite-plus/env" && -s "$HOME/.vite-plus/env" ]]; then
     source "$HOME/.vite-plus/env"
   fi
 

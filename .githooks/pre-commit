@@ -13,7 +13,7 @@ lint_staged() {
   for file in "${files[@]}"; do
     [[ -f "$file" ]] || continue
     case "$file" in
-      .zshenv|.zshrc|*.zsh|func/*) ;;
+      .zshenv|.zprofile|.zshrc|*.zsh|func/*) ;;
       *) continue ;;
     esac
 

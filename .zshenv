@@ -20,6 +20,10 @@ typeset +x OSNAME
 export ZDOTDIR="${ZDOTDIR:-${${(%):-%x}:A:h}}"
 typeset -aU path fpath
 
+if [[ "$OSNAME" == macos && -o login ]]; then
+  typeset -gaU _zsh_login_path=()
+fi
+
 source "$ZDOTDIR/config/bootstrap.zsh"
 _zsh_source \
   "$ZDOTDIR/config/env/common.zsh" \
@@ -28,6 +32,3 @@ _zsh_source \
   "$ZDOTDIR/config/env/tools.zsh"
 
 unfunction _zsh_source _zsh_autoload_dir _zsh_add_path
-
-# Vite+ bin (https://viteplus.dev)
-. "/home/geist/.vite-plus/env"

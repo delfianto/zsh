@@ -35,7 +35,6 @@ if [[ -d "$bun_home" ]]; then
 fi
 
 _zsh_add_path "$HOME/.lmstudio/bin"
-_zsh_add_path "$HOME/.vite-plus/bin"
 
 if [[ -z "${SDKMAN_DIR:-}" ]]; then
   if [[ -d /opt/sdkman ]]; then
@@ -49,6 +48,10 @@ typeset candidate_bin
 for candidate_bin in "$SDKMAN_DIR"/candidates/*/current/bin(N/); do
   _zsh_add_path "$candidate_bin" after
 done
+
+# Keep Vite+ executables available without loading its interactive shell hook.
+_zsh_add_path "$HOME/.vite-plus/bin"
+_zsh_add_path "$HOME/.vite-plus/fallback-bin" after
 
 if (( ${+commands[uv]} )); then
   export UV_CACHE_DIR="${UV_CACHE_DIR:-$XDG_CACHE_HOME/uv}"

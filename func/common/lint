@@ -4,6 +4,7 @@ lint() {
   # mismatched case branches) before it lands in an interactive shell.
   local -a files=(
     "${ZDOTDIR}/.zshenv"
+    "${ZDOTDIR}/.zprofile"
     "${ZDOTDIR}/.zshrc"
     "${ZDOTDIR}/test.zsh"
     "${ZDOTDIR}"/config/**/*.zsh(N.)

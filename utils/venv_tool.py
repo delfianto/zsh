@@ -10,12 +10,11 @@ import os
 import shutil
 import subprocess
 import sys
+import tomllib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import NoReturn, cast
 from venv import EnvBuilder
-
-import tomllib
 
 EXCLUDED_DIRECTORIES = {
     ".git",

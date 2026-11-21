@@ -14,6 +14,9 @@ _zsh_add_path() {
     path+=("$1")
   else
     path=("$1" $path)
+    if (( ${+_zsh_login_path} )); then
+      _zsh_login_path=("$1" "${_zsh_login_path[@]}")
+    fi
   fi
 }
 

@@ -28,8 +28,9 @@ what its owner expects, not spend breakfast negotiating a dependency graph.
   `$XDG_CACHE_HOME/zsh`; generated debris does not belong in Git.
 - Selects installed modern CLI replacements such as `bat`, `eza`, `duf`, `gdu`,
   and `dust` while retaining sensible fallbacks.
-- Initializes SDKMAN, Vite+, Bun, zoxide, direnv, fzf, and Starship when their
-  files or commands are present.
+- Adds the Vite+ executables to PATH when installed and loads its shell hook
+  only for interactive shells, alongside the optional SDKMAN, Bun, zoxide,
+  direnv, fzf, and Starship integrations.
 - Loads autosuggestions, history substring search, and syntax highlighting from
   system package locations. Syntax highlighting is loaded last, because ZLE
   plugin ordering is one of those tiny rituals shell users learn through pain.
@@ -63,7 +64,7 @@ If any of that sounds surprising, excellent: the warning above is functioning.
 ## Startup Architecture
 
 Only `~/.zshenv` needs to point into this repository. It resolves the repository
-location and sets `ZDOTDIR`, after which Zsh finds `.zshrc` itself.
+location and sets `ZDOTDIR`, after which Zsh finds `.zprofile` and `.zshrc`.
 
 Every Zsh process loads:
 
@@ -73,6 +74,10 @@ Every Zsh process loads:
    environment.
 4. `config/env/tools.zsh` for derived editor, pager, SDKMAN, Bun, uv, and other
    tool paths.
+
+On macOS login shells, `.zprofile` restores the precedence of the paths this
+configuration prepended after the system profile runs `path_helper`. It keeps
+the other paths added by the system profile.
 
 Interactive shells then load:
 
@@ -94,6 +99,7 @@ the helpers afterward; they are scaffolding, not public shell commands.
 ```text
 .
 ├── .zshenv                 every-shell entry point
+├── .zprofile               macOS login PATH ordering
 ├── .zshrc                  interactive load sequence
 ├── config/
 │   ├── bootstrap.zsh       temporary initialization helpers
@@ -161,8 +167,10 @@ manifest. Useful additions include:
   `zsh-syntax-highlighting` installed beneath `/usr/share/zsh/plugins` on Linux
   or Homebrew's `share` directory on macOS;
 - SDKMAN, Bun, Vite+, and uv when those ecosystems are relevant to the host.
-- Python 3 for the stdlib-only `cpuinfo`, `iommu`, `os-release`, and `pulse-eq`
-  implementations.
+- Python 3 for the stdlib-only `cpuinfo`, `hwmon`, `iommu`, `os-release`, and
+  `pulse-eq` implementations. `hwmon` reads from `sensors` (lm-sensors).
+- Python 3 and `psutil` for `psmem`, which uses it to collect process and system
+  statistics on Linux and macOS.
 
 Repository development additionally expects `ruff` and `basedpyright`; the
 `lint` command applies both to every Python file rather than trusting that type
@@ -185,6 +193,8 @@ Common commands:
 - `lint` syntax-checks the repository and runs its behavioral tests.
 - `lsenv [PATTERN]` lists exported parameters with optional filtering.
 - `lspath` prints PATH one entry per line.
+- `psmem` shows the processes using the most resident memory. `psmem --watch`
+  refreshes the table and adds per-process CPU usage.
 
 Development commands:
 
@@ -217,8 +227,15 @@ otherwise using the environment's own pip. `run` validates auto-detected Python
 module paths and prefers genuinely shallower `main.py` files rather than merely
 shorter-looking strings.
 
-Linux adds `cpuinfo`, `fixmirror`, `iommu`, `nvidia-cdi`, `os-release`, `pkg`,
+Linux adds `cpuinfo`, `fixmirror`, `hwmon`, `iommu`, `nvidia-cdi`, `os-release`, `pkg`,
 `pulse-eq`, `sudo-conf`, and an `xdg-open` wrapper that prefers `handlr`.
+
+`hwmon` displays a grouped snapshot of sensor readings. Use `hwmon --json`
+for machine-readable output. Link `utils/hwmon.py` into your PATH as `hwmon`
+to run it outside interactive Zsh or use `watch -n1 hwmon` for a live display.
+
+The standalone `utils/nvidia_cdi.py` entry point runs with the caller's
+permissions. The interactive `nvidia-cdi` command uses `sudo`.
 
 `cpuinfo` replaces the former `watch | grep | awk | column` frequency matryoshka
 with one stdlib Python utility that understands Linux CPU lists, topology,

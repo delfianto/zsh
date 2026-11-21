@@ -13,5 +13,6 @@ if [[ -r "$plugin_root/zsh-history-substring-search/zsh-history-substring-search
   bindkey '^[[5~' history-substring-search-up
   bindkey '^[[6~' history-substring-search-down
 fi
-[[ -r "$plugin_root/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]] &&
+if [[ -r "$plugin_root/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
   source "$plugin_root/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+fi

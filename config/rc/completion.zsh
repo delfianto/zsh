@@ -23,11 +23,10 @@ zstyle ':completion:*' accept-exact '*(N)'
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "$completion_root/completion"
 
-# Once a day, run the full initialization to detect changed completion files.
-# When the dump is less than 24 hours old, -C trusts it and skips compinit's
-# slower security scan and function-count validation; a missing dump is created.
-if [[ -n "$zcompdump"(#qN.mh+24) ]]; then
-  compinit -d "$zcompdump"
-else
+# Reuse a dump for up to 24 hours. On a cold start or after expiration, force
+# a rebuild so edits that leave the completion file count unchanged take effect.
+if [[ -n "$zcompdump"(#qN.mh-24) ]]; then
   compinit -C -d "$zcompdump"
+else
+  compinit -d "$zcompdump" -D && compdump
 fi

@@ -1,0 +1,3 @@
+psmem() {
+  "$ZDOTDIR/utils/psmem.py" "$@"
+}

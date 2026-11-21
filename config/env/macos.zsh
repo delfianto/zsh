@@ -11,8 +11,8 @@ export HOMEBREW_NO_ENV_HINTS="${HOMEBREW_NO_ENV_HINTS:-1}"
 typeset -g LS_ARGS="${LS_ARGS:---color=auto --group-directories-first --time-style=long-iso -h}"
 typeset +x LS_ARGS
 
-_zsh_add_path "$HOMEBREW_PREFIX/bin"
 _zsh_add_path "$HOMEBREW_PREFIX/sbin"
+_zsh_add_path "$HOMEBREW_PREFIX/bin"
 export MANPATH="$HOMEBREW_PREFIX/share/man:${MANPATH:-}"
 export INFOPATH="$HOMEBREW_PREFIX/share/info:${INFOPATH:-}"
 [[ -d "$HOMEBREW_PREFIX/share/zsh/site-functions" ]] &&
