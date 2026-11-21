@@ -9,8 +9,10 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from collections import defaultdict
 from collections.abc import Iterator
+from dataclasses import dataclass
 from itertools import zip_longest
 from pathlib import Path
 from textwrap import wrap
@@ -40,37 +42,64 @@ UNITS = {
     "humidity": (".1f", "% RH"),
 }
 READING_SEPARATOR = "  /  "
-# Matched the SPD EEPROM serials to SMBIOS slot locators on this board.
-DIMM_SLOTS = {
-    "spd5118-i2c-15-51": "DIMM A2",
-    "spd5118-i2c-15-53": "DIMM B2",
-}
-# Matched the X870E block diagram to this machine's live PCI topology.
-BOARD_IO_LABELS = {
-    "prom21_xhci-pci-1500": "PCH 1 XHCI",
-    "prom21_xhci-pci-1300": "PCH 2 XHCI",
-    "r8169_0_900:00-mdio-0": "LAN 2.5G PHY",
-    "r8169_0_a00:00-mdio-0": "LAN 5G PHY",
-}
-ROW_ORDER = {
-    "CPU": ("TCTL", "TDIE"),
-    "Voltage rails": (
-        "12V",
-        "5V",
-        "5VSB",
-        "3.3V",
-        "VSB",
-        "AVSB",
-        "VDDCR_VDD",
-        "VDDCR_SOC",
-        "DIMM",
-        "1.8V",
-        "VREF",
-        "VBAT",
-    ),
-    "Cooling": ("CPU_FAN1", "PUMP_SYS1", "JAF_2"),
-    "Chipset and network": ("PCH1XHCI", "PCH2XHCI", "LAN2.5GPHY", "LAN5GPHY"),
-}
+
+
+@dataclass(frozen=True)
+class DashboardConfig:
+    board_chip: str
+    chip_labels: dict[str, str]
+    reading_labels: dict[str, dict[str, str]]
+    row_order: dict[str, dict[str, int]]
+
+
+def config_table(value: object, name: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise TypeError(f"{name} must be a table")
+    return cast(dict[str, object], value)
+
+
+def config_label(value: object, name: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError(f"{name} must be a string")
+    return value
+
+
+def config_labels(value: object, name: str) -> dict[str, str]:
+    return {
+        key: config_label(label, f"{name}.{key}")
+        for key, label in config_table(value, name).items()
+    }
+
+
+def normalize_label(label: str) -> str:
+    return label.upper().removeprefix("+").replace(" ", "")
+
+
+def load_config(path: Path) -> DashboardConfig:
+    with path.open("rb") as handle:
+        document = cast(dict[str, object], tomllib.load(handle))
+
+    reading_tables = config_table(document.get("reading_labels", {}), "reading_labels")
+    order_tables = config_table(document.get("row_order", {}), "row_order")
+    row_order: dict[str, dict[str, int]] = {}
+    for section, values in order_tables.items():
+        name = f"row_order.{section}"
+        if not isinstance(values, list):
+            raise TypeError(f"{name} must be an array of labels")
+        row_order[section] = {
+            normalize_label(config_label(label, name)): index
+            for index, label in enumerate(cast(list[object], values))
+        }
+
+    return DashboardConfig(
+        board_chip=config_label(document.get("board_chip", ""), "board_chip"),
+        chip_labels=config_labels(document.get("chip_labels", {}), "chip_labels"),
+        reading_labels={
+            group: config_labels(labels, f"reading_labels.{group}")
+            for group, labels in reading_tables.items()
+        },
+        row_order=row_order,
+    )
 
 
 def display_value(kind: str, value: SensorValue) -> str:
@@ -133,7 +162,7 @@ def compact(chip: SensorChip, names: dict[str, str] | None = None) -> str:
 def row_sort_key(
     label: str, priority: dict[str, int]
 ) -> tuple[int, tuple[int | str, ...]]:
-    normalized = label.removeprefix("+").replace(" ", "")
+    normalized = normalize_label(label)
     natural = tuple(
         int(part) if part.isdigit() else part
         for part in re.split(r"([0-9]+)", normalized)
@@ -162,7 +191,7 @@ def nvme_drive_labels() -> dict[str, str]:
     return labels
 
 
-def grouped_rows(data: SensorData) -> Sections:
+def grouped_rows(data: SensorData, config: DashboardConfig) -> Sections:
     drives = nvme_drive_labels()
     sections: Sections = {
         name: []
@@ -184,7 +213,7 @@ def grouped_rows(data: SensorData) -> Sections:
             sections["CPU"].extend(
                 (label, value) for _, label, value in readings(features)
             )
-        elif chip == "nct6687-isa-0a20":
+        elif chip == config.board_chip:
             cooling: defaultdict[str, dict[str, str]] = defaultdict(dict)
             for kind, label, value in readings(features):
                 if kind in ("fan", "pwm"):
@@ -207,49 +236,41 @@ def grouped_rows(data: SensorData) -> Sections:
         else:
             prefix = chip.split("-", 1)[0]
             address = chip.rsplit("-", 1)[-1]
-            labels: dict[str, str]
             if prefix == "spd5118":
-                section = "Memory"
-                name = DIMM_SLOTS.get(chip, f"DIMM SPD {address}")
-                labels = {"temp1": ""}
+                section, name, label_group = "Memory", f"DIMM SPD {address}", "memory"
             elif prefix in ("amdgpu", "i915", "xe", "nouveau"):
-                section, name, labels = (
+                section, name, label_group = (
                     "Graphics",
                     f"{prefix} {address}",
-                    {
-                        "temp1": "Temp",
-                        "vddgfx": "Vgfx",
-                        "vddnb": "Vnb",
-                        "energy1": "Energy",
-                    },
+                    "graphics",
                 )
             elif prefix == "prom21_xhci":
-                section, name, labels = (
+                section, name, label_group = (
                     "Chipset and network",
-                    BOARD_IO_LABELS.get(chip, f"PROM21 {address}"),
-                    {"temp1": ""},
+                    f"PROM21 {address}",
+                    "chipset",
                 )
             elif prefix.startswith("r8169_"):
-                section, name, labels = (
+                section, name, label_group = (
                     "Chipset and network",
-                    BOARD_IO_LABELS.get(chip, f"LAN {prefix.rsplit('_', 1)[-1]}"),
-                    {"temp1": ""},
+                    f"LAN {prefix.rsplit('_', 1)[-1]}",
+                    "ethernet",
                 )
             elif prefix == "ath12k_hwmon":
-                section, name, labels = (
+                section, name, label_group = (
                     "Chipset and network",
                     f"Wi-Fi {address}",
-                    {"temp1": ""},
+                    "wifi",
                 )
             else:
-                section, name, labels = "Other sensors", chip, {}
-            value = compact(features, labels)
+                section, name, label_group = "Other sensors", chip, "other"
+            value = compact(features, config.reading_labels.get(label_group))
             if value:
-                sections[section].append((name, value))
+                sections[section].append((config.chip_labels.get(chip, name), value))
     for section, rows in sections.items():
         rows[:] = [(label.upper(), *values) for label, *values in rows]
-        if section in ROW_ORDER:
-            priority = {label: index for index, label in enumerate(ROW_ORDER[section])}
+        if section in config.row_order:
+            priority = config.row_order[section]
             rows.sort(key=lambda row: row_sort_key(row[0], priority))
     return sections
 
@@ -415,7 +436,12 @@ def main() -> None:
     if cast(bool, args.json):
         print(json.dumps(data, indent=2))
     else:
-        render(grouped_rows(data))
+        config_path = Path(__file__).resolve().with_suffix(".toml")
+        try:
+            config = load_config(config_path)
+        except (OSError, TypeError, ValueError) as error:
+            parser.exit(1, f"{parser.prog}: config {config_path}: {error}\n")
+        render(grouped_rows(data, config))
 
 
 if __name__ == "__main__":

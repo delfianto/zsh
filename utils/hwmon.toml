@@ -1,0 +1,40 @@
+# Chip ID used for the board's voltages, cooling and status readings.
+board_chip = "nct6687-isa-0a20"
+
+[chip_labels]
+# SPD EEPROM serials matched to the SMBIOS slot locators.
+"spd5118-i2c-15-51" = "DIMM A2"
+"spd5118-i2c-15-53" = "DIMM B2"
+# X870E block diagram matched to this machine's PCI topology.
+"prom21_xhci-pci-1500" = "PCH 1 XHCI"
+"prom21_xhci-pci-1300" = "PCH 2 XHCI"
+"r8169_0_900:00-mdio-0" = "LAN 2.5G PHY"
+"r8169_0_a00:00-mdio-0" = "LAN 5G PHY"
+
+# An empty label displays only the reading value.
+[reading_labels.memory]
+temp1 = ""
+
+[reading_labels.graphics]
+temp1 = "Temp"
+vddgfx = "Vgfx"
+vddnb = "Vnb"
+energy1 = "Energy"
+
+[reading_labels.chipset]
+temp1 = ""
+
+[reading_labels.ethernet]
+temp1 = ""
+
+[reading_labels.wifi]
+temp1 = ""
+
+[row_order]
+CPU = ["TCTL", "TDIE"]
+"Voltage rails" = [
+  "12V", "5V", "5VSB", "3.3V", "VSB", "AVSB", "VDDCR_VDD", "VDDCR_SOC",
+  "DIMM", "1.8V", "VREF", "VBAT",
+]
+Cooling = ["CPU_FAN1", "PUMP_SYS1", "JAF_2"]
+"Chipset and network" = ["PCH 1 XHCI", "PCH 2 XHCI", "LAN 2.5G PHY", "LAN 5G PHY"]

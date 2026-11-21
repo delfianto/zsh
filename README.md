@@ -231,11 +231,14 @@ Linux adds `cpuinfo`, `fixmirror`, `hwmon`, `iommu`, `nvidia-cdi`, `os-release`,
 `pulse-eq`, `sudo-conf`, and an `xdg-open` wrapper that prefers `handlr`.
 
 `hwmon` displays a grouped snapshot of sensor readings. Use `hwmon --json`
-for machine-readable output. Link `utils/hwmon.py` into your PATH as `hwmon`
-to run it outside interactive Zsh or use `watch -n1 hwmon` for a live display.
+for machine-readable output. Edit `utils/hwmon.toml` to change the board chip
+ID, chip display names, reading labels, or row order within a section. Chip
+IDs come from `sensors -j`. Reading labels can be set for `memory`, `graphics`,
+`chipset`, `ethernet`, `wifi`, and `other`. Set a label to `""` to show only
+its value. Keep the TOML file beside `hwmon.py`. Run `hwmon` from interactive
+Zsh to load its wrapper on demand.
 
-The standalone `utils/nvidia_cdi.py` entry point runs with the caller's
-permissions. The interactive `nvidia-cdi` command uses `sudo`.
+`nvidia-cdi` uses `sudo` to regenerate the NVIDIA CDI configuration.
 
 `cpuinfo` replaces the former `watch | grep | awk | column` frequency matryoshka
 with one stdlib Python utility that understands Linux CPU lists, topology,

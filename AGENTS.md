@@ -22,8 +22,9 @@ fast, and free of generated state inside the working tree.
   Zsh wrappers, plus their colocated tests. Keep Python utilities standard-library
   only unless a dependency is explicitly justified.
 - Python CLI entry points in `utils/` are executable and called directly by
-  their lazy wrappers. Keep test modules non-executable; do not add a shared Zsh
-  dispatch helper merely to avoid repeating one path invocation.
+  their lazy wrappers in `func/`. Expose new utilities through Zsh autoloads
+  and keep `utils/` off PATH. Keep test modules non-executable; do not add a
+  shared Zsh dispatch helper merely to avoid repeating one path invocation.
 
 ## Invariants
 
