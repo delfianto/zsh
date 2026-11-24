@@ -1,5 +1,4 @@
 alias hdmon='sudo hdsentinel'
-alias usbdev='lsusb -tv'
 alias pcidev='lspci -tv'
 alias dmesg='sudo dmesg -H'
 alias dracut='sudo dracut'

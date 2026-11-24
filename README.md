@@ -167,8 +167,9 @@ manifest. Useful additions include:
   `zsh-syntax-highlighting` installed beneath `/usr/share/zsh/plugins` on Linux
   or Homebrew's `share` directory on macOS;
 - SDKMAN, Bun, Vite+, and uv when those ecosystems are relevant to the host.
-- Python 3 for the stdlib-only `cpuinfo`, `hwmon`, `iommu`, `os-release`, and
-  `pulse-eq` implementations. `hwmon` reads from `sensors` (lm-sensors).
+- Python 3 for the stdlib-only `cpuinfo`, `hwmon`, `iommu`, `os-release`,
+  `pulse-eq`, and `usbdev` implementations. `hwmon` reads from `sensors`
+  (lm-sensors).
 - Python 3 and `psutil` for `psmem`, which uses it to collect process and system
   statistics on Linux and macOS.
 
@@ -195,6 +196,10 @@ Common commands:
 - `lspath` prints PATH one entry per line.
 - `psmem` shows the processes using the most resident memory. `psmem --watch`
   refreshes the table and adds per-process CPU usage.
+- `usbdev` shows devices under their USB buses and hubs, with readable names,
+  port numbers, and link speeds where available. `usbdev -v` adds USB IDs and
+  locations. `usbdev -a` includes empty buses. It reads sysfs on Linux and the
+  USB registry on macOS, and uses a local `usb.ids` file when available.
 
 Development commands:
 

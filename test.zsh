@@ -93,6 +93,8 @@ done
 [[ "$OSNAME" != linux ]] || (( ${+aliases[pacman]} )) ||
   fail "Linux pacman alias is missing"
 (( ! ${+aliases[hwmon]} )) || fail "hwmon alias shadows the external command"
+(( ! ${+aliases[usbdev]} )) || fail "usbdev alias shadows the autoloaded function"
+(( ! ${+aliases[lsusb]} && ! ${+functions[lsusb]} )) || fail "lsusb is shadowed"
 (( ! ${+commands[bat]} || ${+aliases[cat]} )) || fail "bat did not replace cat"
 (( ! ${+commands[eza]} || ${+aliases[ls]} )) || fail "eza did not replace ls"
 
@@ -101,7 +103,7 @@ case "$OSNAME" in
   linux) platform_functions=(cpuinfo fixmirror hwmon iommu nvidia-cdi os-release pulse-eq sudo-conf xdg-open) ;;
   macos) platform_functions=(beer svc) ;;
 esac
-for name in checksh ex func jstatd lint lsenv lspath psmem fpath gcc-flags venv pkg "${platform_functions[@]}"; do
+for name in checksh ex func jstatd lint lsenv lspath psmem usbdev fpath gcc-flags venv pkg "${platform_functions[@]}"; do
   (( ${+functions[$name]} )) || fail "public function is not autoloaded: $name"
 done
 typeset -a legacy_functions=(${(k)functions[(I)cmd_*]})
@@ -138,6 +140,13 @@ if (( ${+commands[gcc]} )) && [[ "$(LC_ALL=C command gcc --version 2>/dev/null)"
   fi
 fi
 venv --help >/dev/null || fail "venv Python utility could not start"
+[[ "$(usbdev --help)" == *--all-buses* ]] || fail "usbdev Python utility could not start"
+if [[ "$OSNAME" == linux && -d /sys/bus/usb/devices ]]; then
+  typeset usbdev_tree
+  usbdev_tree="$(usbdev -a)" || fail "usbdev could not list USB buses"
+  [[ "$usbdev_tree" == 'No USB devices found.' || "$usbdev_tree" == 'USB topology'*'Link speed'* ]] ||
+    fail "usbdev did not show the link speed column"
+fi
 
 typeset venv_test_dir
 venv_test_dir="$(mktemp -d "${TMPDIR:-/tmp}/zsh-venv-load.XXXXXXXXXX")" ||
